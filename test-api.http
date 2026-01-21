@@ -1,0 +1,133 @@
+### Test API Endpoints
+### Bisa digunakan dengan REST Client extension di VSCode
+
+@baseUrl = http://localhost:5000/api
+
+### Health Check
+GET http://localhost:5000/
+
+###
+### POSTS ENDPOINTS
+###
+
+### Get all posts
+GET {{baseUrl}}/posts
+Content-Type: application/json
+
+### Get posts with pagination
+GET {{baseUrl}}/posts?page=1&limit=5&status=publish
+
+### Get posts by category
+GET {{baseUrl}}/posts?category=berita
+
+### Search posts
+GET {{baseUrl}}/posts?search=teknologi
+
+### Get popular posts
+GET {{baseUrl}}/posts/popular?limit=5
+
+### Get recent posts
+GET {{baseUrl}}/posts/recent?limit=5
+
+### Get single post by slug
+GET {{baseUrl}}/posts/contoh-artikel-pertama
+
+### Create new post
+POST {{baseUrl}}/posts
+Content-Type: application/json
+
+{
+  "title": "Artikel Test",
+  "slug": "artikel-test",
+  "content": "Ini adalah konten artikel test",
+  "excerpt": "Excerpt artikel test",
+  "status": "publish",
+  "featured_image": "/uploads/images/test.jpg",
+  "category_ids": [1, 2],
+  "tag_ids": [1]
+}
+
+### Update post
+PUT {{baseUrl}}/posts/1
+Content-Type: application/json
+
+{
+  "title": "Artikel Test (Updated)",
+  "status": "publish"
+}
+
+### Delete post
+DELETE {{baseUrl}}/posts/1
+
+###
+### CATEGORIES ENDPOINTS
+###
+
+### Get all categories
+GET {{baseUrl}}/categories
+
+### Get single category
+GET {{baseUrl}}/categories/berita
+
+### Get posts by category
+GET {{baseUrl}}/categories/berita/posts?page=1&limit=10
+
+### Create category
+POST {{baseUrl}}/categories
+Content-Type: application/json
+
+{
+  "name": "Teknologi",
+  "slug": "teknologi",
+  "description": "Berita seputar teknologi"
+}
+
+### Update category
+PUT {{baseUrl}}/categories/1
+Content-Type: application/json
+
+{
+  "name": "Teknologi (Updated)"
+}
+
+### Delete category
+DELETE {{baseUrl}}/categories/1
+
+###
+### UPLOAD ENDPOINTS
+###
+
+### Upload single image
+# Note: Untuk test upload di REST Client, gunakan:
+POST {{baseUrl}}/upload/image
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="image"; filename="test.jpg"
+Content-Type: image/jpeg
+
+< /path/to/your/image.jpg
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+###
+### AUTH ENDPOINTS
+###
+
+### Register
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "testuser",
+  "email": "test@example.com",
+  "password": "password123"
+}
+
+### Login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
