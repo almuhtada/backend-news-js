@@ -18,6 +18,11 @@ const Post = sequelize.define(
       allowNull: false,
       unique: true,
     },
+    summary: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+
     content: {
       type: DataTypes.TEXT("long"),
       allowNull: true,
@@ -86,7 +91,7 @@ const Post = sequelize.define(
         fields: ["published_at"],
       },
     ],
-  }
+  },
 );
 
 module.exports = Post;

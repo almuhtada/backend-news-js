@@ -1,5 +1,6 @@
 const { Post, User, Category, Tag, Notification } = require("../schema");
 const { Op } = require("sequelize");
+const { generateSummary } = require("../services/summarizer.service");
 
 // Get all posts with pagination and filters
 exports.getAllPosts = async (req, res) => {
@@ -213,6 +214,15 @@ exports.createPost = async (req, res) => {
       });
     }
 
+    // 🔥 AUTO GENERATE SUMMARY (AI)
+    let summary = null;
+    try {
+      summary = await generateSummary(content);
+    } catch (err) {
+      console.error("Summary generation failed:", err);
+      summary = excerpt || null; // fallback aman
+    }
+
     // Use author_id from body or req.user or default to 1 (admin)
     const postAuthorId = author_id || (req.user && req.user.id) || 1;
 
@@ -222,6 +232,7 @@ exports.createPost = async (req, res) => {
       slug: slug || title.toLowerCase().replace(/\s+/g, "-"),
       content,
       excerpt,
+      summary, // ✅ INI WAJIB
       featured_image,
       status,
       author_id: postAuthorId,
@@ -247,14 +258,14 @@ exports.createPost = async (req, res) => {
       ],
     });
 
-    // Create notification for the new post
+    // Notification
     const author = await User.findByPk(postAuthorId);
     await Notification.create({
       user_name: author ? author.username : "Unknown User",
       action: "add",
       target: title,
       status: "pending",
-      description: excerpt || `Berita baru ditambahkan: ${title}`,
+      description: summary || excerpt || `Berita baru ditambahkan: ${title}`,
       priority: "medium",
       category: "news",
       post_id: post.id,
@@ -308,7 +319,9 @@ exports.updatePost = async (req, res) => {
         featured_image !== undefined ? featured_image : post.featured_image,
       status: status || post.status,
       published_at:
-        status === "publish" && !post.published_at ? new Date() : post.published_at,
+        status === "publish" && !post.published_at
+          ? new Date()
+          : post.published_at,
     });
 
     // Update categories if provided
