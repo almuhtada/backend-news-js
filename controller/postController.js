@@ -243,6 +243,41 @@ exports.createPost = async (req, res) => {
       });
     }
 
+    // Use author_id from body or req.user, or find an admin
+    let postAuthorId = author_id || (req.user && req.user.id);
+    let author = null;
+
+    if (postAuthorId) {
+      author = await User.findByPk(postAuthorId);
+    }
+
+    // If no valid author, find any administrator
+    if (!author) {
+      author = await User.findOne({ where: { role: "administrator" } });
+      if (author) {
+        postAuthorId = author.id;
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: "No valid author found. Please provide author_id.",
+        });
+      }
+    }
+
+    // Generate unique slug
+    let postSlug =
+      slug ||
+      title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+
+    // Check if slug exists, append timestamp if needed
+    const existingPost = await Post.findOne({ where: { slug: postSlug } });
+    if (existingPost) {
+      postSlug = `${postSlug}-${Date.now()}`;
+    }
+
     // 🔥 AUTO GENERATE SUMMARY (AI)
     let summary = null;
     try {
@@ -252,13 +287,10 @@ exports.createPost = async (req, res) => {
       summary = excerpt || null; // fallback aman
     }
 
-    // Use author_id from body or req.user or default to 1 (admin)
-    const postAuthorId = author_id || (req.user && req.user.id) || 1;
-
     // Create post
     const post = await Post.create({
       title,
-      slug: slug || title.toLowerCase().replace(/\s+/g, "-"),
+      slug: postSlug,
       content,
       excerpt,
       summary,
@@ -266,20 +298,6 @@ exports.createPost = async (req, res) => {
       status,
       author_id: postAuthorId,
       published_at: status === "publish" ? new Date() : null,
-    });
-
-    // 🔔 TELEGRAM - PENULIS
-    await sendTelegramMessage({
-      topic: "PENULIS",
-      text: `
-          📝 *Berita Baru Dikirim*
-
-          *Judul:* ${post.title}
-          *Penulis:* ${author ? author.username : "Unknown"}
-          *Waktu:* ${new Date().toLocaleString("id-ID")}
-
-          Status: Menunggu review editor
-          `.trim(),
     });
 
     // Add categories
@@ -301,8 +319,7 @@ exports.createPost = async (req, res) => {
       ],
     });
 
-    // Notification
-    const author = await User.findByPk(postAuthorId);
+    // Create notification
     await Notification.create({
       user_name: author ? author.username : "Unknown User",
       action: "add",
@@ -313,6 +330,17 @@ exports.createPost = async (req, res) => {
       category: "news",
       post_id: post.id,
     });
+
+    // 🔔 TELEGRAM - PENULIS (non-blocking, plain text)
+    sendTelegramMessage({
+      topic: "PENULIS",
+      text:
+        `📝 Berita Baru Dikirim\n\n` +
+        `📰 Judul: ${post.title}\n` +
+        `✍️ Penulis: ${author ? author.username : "Unknown"}\n` +
+        `⏰ Waktu: ${new Date().toLocaleString("id-ID")}\n\n` +
+        `Status: Menunggu review editor`,
+    }).catch((err) => console.error("Telegram notification failed:", err));
 
     res.status(201).json({
       success: true,

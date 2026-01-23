@@ -1,0 +1,996 @@
+{
+  "info": {
+    "name": "Al-Muhtada News API",
+    "description": "Complete API collection for Al-Muhtada News Backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.token) {",
+                  "    pm.collectionVariables.set('token', jsonData.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@almuhtada.org\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Posts",
+      "item": [
+        {
+          "name": "Get All Posts",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/posts?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["posts"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "category", "value": "", "disabled": true },
+                { "key": "author", "value": "", "disabled": true },
+                { "key": "search", "value": "", "disabled": true },
+                { "key": "status", "value": "publish", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Popular Posts",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/posts/popular?limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["posts", "popular"],
+              "query": [
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Recent Posts",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/posts/recent?limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["posts", "recent"],
+              "query": [
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Post by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/posts/id/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["posts", "id", "1"]
+            }
+          }
+        },
+        {
+          "name": "Get Post by Slug",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/posts/contoh-berita-slug",
+              "host": ["{{baseUrl}}"],
+              "path": ["posts", "contoh-berita-slug"]
+            }
+          }
+        },
+        {
+          "name": "Create Post",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Judul Berita Baru\",\n  \"content\": \"<p>Isi konten berita lengkap di sini...</p>\",\n  \"excerpt\": \"Ringkasan berita singkat\",\n  \"category_id\": 1,\n  \"author_id\": 1,\n  \"status\": \"publish\",\n  \"featured_image\": \"/uploads/images/sample.jpg\",\n  \"tags\": [1, 2, 3]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/posts",
+              "host": ["{{baseUrl}}"],
+              "path": ["posts"]
+            }
+          }
+        },
+        {
+          "name": "Update Post",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Judul Berita Diperbarui\",\n  \"content\": \"<p>Konten yang sudah diperbarui...</p>\",\n  \"status\": \"publish\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/posts/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["posts", "1"]
+            }
+          }
+        },
+        {
+          "name": "Delete Post",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/posts/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["posts", "1"]
+            }
+          }
+        },
+        {
+          "name": "AI Summarize Text",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Pesantren Riset Al-Muhtada menggelar kajian rutin setiap Jumat malam. Kegiatan ini dihadiri oleh para mahasantri dari berbagai prodi di Universitas Negeri Semarang. Kajian kali ini membahas tentang pentingnya riset dalam pengembangan keilmuan Islam. Narasumber menyampaikan bahwa tradisi menulis dan meneliti harus terus dilestarikan oleh generasi muda Muslim.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/posts/summarize",
+              "host": ["{{baseUrl}}"],
+              "path": ["posts", "summarize"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Categories",
+      "item": [
+        {
+          "name": "Get All Categories",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories"]
+            }
+          }
+        },
+        {
+          "name": "Get Category by Slug",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/categories/berita",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories", "berita"]
+            }
+          }
+        },
+        {
+          "name": "Get Posts by Category",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/categories/berita/posts?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories", "berita", "posts"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Kategori Baru\",\n  \"slug\": \"kategori-baru\",\n  \"description\": \"Deskripsi kategori\",\n  \"parent_id\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories"]
+            }
+          }
+        },
+        {
+          "name": "Update Category",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Kategori Diperbarui\",\n  \"description\": \"Deskripsi baru\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/categories/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories", "1"]
+            }
+          }
+        },
+        {
+          "name": "Delete Category",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/categories/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tags",
+      "item": [
+        {
+          "name": "Get All Tags",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/tags?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["tags"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "search", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Tag",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tag Baru\",\n  \"slug\": \"tag-baru\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tags",
+              "host": ["{{baseUrl}}"],
+              "path": ["tags"]
+            }
+          }
+        },
+        {
+          "name": "Update Tag",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tag Diperbarui\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tags/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["tags", "1"]
+            }
+          }
+        },
+        {
+          "name": "Delete Tag",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tags/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["tags", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "role", "value": "", "disabled": true },
+                { "key": "search", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "1"]
+            }
+          }
+        },
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"newuser\",\n  \"email\": \"newuser@example.com\",\n  \"password\": \"password123\",\n  \"display_name\": \"New User\",\n  \"first_name\": \"New\",\n  \"last_name\": \"User\",\n  \"role\": \"author\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"]
+            }
+          }
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"display_name\": \"Updated Name\",\n  \"role\": \"editor\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "1"]
+            }
+          }
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Authors",
+      "item": [
+        {
+          "name": "Get Author Posts",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/authors/admin?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["authors", "admin"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Achievements",
+      "item": [
+        {
+          "name": "Get All Achievements",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/achievements?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["achievements"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Achievement by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/achievements/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["achievements", "1"]
+            }
+          }
+        },
+        {
+          "name": "Create Achievement",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Juara 1 Lomba Karya Tulis\",\n  \"description\": \"Prestasi mahasantri dalam kompetisi nasional\",\n  \"image\": \"/uploads/images/prestasi.jpg\",\n  \"date\": \"2025-01-15\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/achievements",
+              "host": ["{{baseUrl}}"],
+              "path": ["achievements"]
+            }
+          }
+        },
+        {
+          "name": "Update Achievement",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Prestasi Diperbarui\",\n  \"description\": \"Deskripsi baru\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/achievements/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["achievements", "1"]
+            }
+          }
+        },
+        {
+          "name": "Delete Achievement",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/achievements/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["achievements", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Publications",
+      "item": [
+        {
+          "name": "Get All Publications",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/publications?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["publications"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Publication by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/publications/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["publications", "1"]
+            }
+          }
+        },
+        {
+          "name": "Create Publication",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Jurnal Penelitian Pesantren\",\n  \"description\": \"Publikasi hasil penelitian mahasantri\",\n  \"file_url\": \"/uploads/files/jurnal.pdf\",\n  \"cover_image\": \"/uploads/images/cover.jpg\",\n  \"published_date\": \"2025-01-20\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/publications",
+              "host": ["{{baseUrl}}"],
+              "path": ["publications"]
+            }
+          }
+        },
+        {
+          "name": "Update Publication",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Publikasi Diperbarui\",\n  \"description\": \"Deskripsi baru\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/publications/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["publications", "1"]
+            }
+          }
+        },
+        {
+          "name": "Delete Publication",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/publications/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["publications", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "About",
+      "item": [
+        {
+          "name": "Get All About Sections",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/about",
+              "host": ["{{baseUrl}}"],
+              "path": ["about"]
+            }
+          }
+        },
+        {
+          "name": "Get About Section by Key",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/about/vision",
+              "host": ["{{baseUrl}}"],
+              "path": ["about", "vision"]
+            }
+          }
+        },
+        {
+          "name": "Upsert About Section",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"vision\",\n  \"title\": \"Visi Pesantren\",\n  \"content\": \"<p>Menjadi pesantren riset terkemuka...</p>\",\n  \"image\": \"/uploads/images/vision.jpg\",\n  \"order\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/about",
+              "host": ["{{baseUrl}}"],
+              "path": ["about"]
+            }
+          }
+        },
+        {
+          "name": "Delete About Section",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/about/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["about", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Page Contents",
+      "item": [
+        {
+          "name": "Get All Page Contents",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/page-contents",
+              "host": ["{{baseUrl}}"],
+              "path": ["page-contents"]
+            }
+          }
+        },
+        {
+          "name": "Get Griya Quran Content",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/page-contents/griya-quran",
+              "host": ["{{baseUrl}}"],
+              "path": ["page-contents", "griya-quran"]
+            }
+          }
+        },
+        {
+          "name": "Get Program Pengajar Content",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/page-contents/program-pengajar",
+              "host": ["{{baseUrl}}"],
+              "path": ["page-contents", "program-pengajar"]
+            }
+          }
+        },
+        {
+          "name": "Get Pendaftaran Content",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/page-contents/pendaftaran",
+              "host": ["{{baseUrl}}"],
+              "path": ["page-contents", "pendaftaran"]
+            }
+          }
+        },
+        {
+          "name": "Upsert Page Content",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"page_key\": \"griya-quran\",\n  \"title\": \"Griya Qur'an\",\n  \"content\": {\n    \"header\": {\n      \"title\": \"Griya Qur'an Hidayatul Muhtadin\",\n      \"description\": \"Lembaga pembelajaran Al-Qur'an\",\n      \"address\": \"Jl. Contoh No. 123\",\n      \"phone\": \"08123456789\"\n    },\n    \"vpiMisi\": {\n      \"visi\": \"Visi baru\",\n      \"misi\": [\"Misi 1\", \"Misi 2\"]\n    },\n    \"programs\": [],\n    \"halaqah\": []\n  },\n  \"status\": \"publish\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/page-contents",
+              "host": ["{{baseUrl}}"],
+              "path": ["page-contents"]
+            }
+          }
+        },
+        {
+          "name": "Delete Page Content",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/page-contents/griya-quran",
+              "host": ["{{baseUrl}}"],
+              "path": ["page-contents", "griya-quran"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "Get All Notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "status", "value": "", "disabled": true },
+                { "key": "type", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Notification Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications", "stats"]
+            }
+          }
+        },
+        {
+          "name": "Create Notification",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"post_submission\",\n  \"title\": \"Berita Baru Diajukan\",\n  \"message\": \"User mengajukan berita baru untuk direview\",\n  \"reference_id\": 1,\n  \"reference_type\": \"post\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/notifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications"]
+            }
+          }
+        },
+        {
+          "name": "Update Notification Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"approved\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/notifications/1/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications", "1", "status"]
+            }
+          }
+        },
+        {
+          "name": "Delete Notification",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Telegram",
+      "item": [
+        {
+          "name": "Send Notification - Penulis Submit",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Tafsir Al-Baqarah Ayat 1-5\",\n  \"author\": \"Ahmad Fauzi\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/telegram/tele/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["telegram", "tele", "submit"]
+            }
+          }
+        },
+        {
+          "name": "Send Notification - Editor Action",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Tafsir Al-Baqarah Ayat 1-5\",\n  \"author\": \"Ahmad Fauzi\",\n  \"editor\": \"Ust. Ali\",\n  \"action\": \"Disetujui & Dipublish\",\n  \"link\": \"https://almuhtada.org/berita/tafsir-al-baqarah\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/telegram/tele/editor",
+              "host": ["{{baseUrl}}"],
+              "path": ["telegram", "tele", "editor"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Upload",
+      "item": [
+        {
+          "name": "Upload Single Image",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/upload/image",
+              "host": ["{{baseUrl}}"],
+              "path": ["upload", "image"]
+            }
+          }
+        },
+        {
+          "name": "Upload Multiple Images",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/upload/images",
+              "host": ["{{baseUrl}}"],
+              "path": ["upload", "images"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
