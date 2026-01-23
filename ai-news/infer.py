@@ -1,108 +1,72 @@
-import re
 import sys
-import torch
-import pickle
-import torch.nn as nn
+import os
+from groq import Groq
 
-# ================= UTIL =================
-def clean(text):
-    text = re.sub(r"\s+", " ", text)
-    return text.strip()
+# ================= GROQ AI SUMMARIZER =================
+# Menggunakan LLM untuk meringkas berita dengan lebih pintar
 
-def sent_tokenize(text):
-    # Ambil kalimat yang cukup panjang agar tidak noise
-    sentences = [s.strip() for s in re.split(r'[.!?]', text)]
-    return [s for s in sentences if len(s) > 25]
-# =======================================
+def summarize_with_ai(text):
+    """Ringkas berita menggunakan Groq AI (Llama/Mixtral)"""
 
-# ================= LOAD VECTORIZER =================
-with open("vectorizer.pkl", "rb") as f:
-    vectorizer = pickle.load(f)
+    api_key = os.environ.get("GROQ_API_KEY")
+    if not api_key:
+        return fallback_summarize(text)
 
-INPUT_DIM = len(vectorizer.get_feature_names_out())
+    try:
+        client = Groq(api_key=api_key)
 
-# ================= MODEL (HARUS SAMA DENGAN TRAINING) =================
-class Summarizer(nn.Module):
-    def __init__(self, input_dim):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(input_dim, 128),
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(128, 1)
+        prompt = f"""Kamu adalah asisten yang ahli meringkas berita dalam Bahasa Indonesia.
+
+Tugas: Ringkas berita berikut menjadi 2-4 kalimat yang padat dan informatif.
+
+Aturan:
+- Tangkap poin utama: siapa, apa, kapan, di mana, mengapa
+- Gunakan bahasa yang jelas dan formal
+- Jangan tambahkan informasi yang tidak ada di berita asli
+- Jangan gunakan kata "Ringkasan:" atau label apapun di awal
+- Langsung tulis ringkasannya saja
+
+Berita:
+{text}
+
+Ringkasan:"""
+
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",  # Model gratis dan cepat
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3,  # Lebih deterministik
+            max_tokens=300
         )
 
-    def forward(self, x):
-        return self.net(x)
+        summary = response.choices[0].message.content.strip()
+        return summary
 
-model = Summarizer(INPUT_DIM)
-model.load_state_dict(torch.load("model.pt", map_location="cpu"))
-model.eval()
+    except Exception as e:
+        print(f"Groq API error: {e}", file=sys.stderr)
+        return fallback_summarize(text)
 
-# ================= NARASI GENERAL =================
-def build_narrative(sentences):
-    if not sentences:
-        return ""
+def fallback_summarize(text):
+    """Fallback jika API gagal - ambil 3 kalimat pertama"""
+    import re
+    text = re.sub(r"\s+", " ", text).strip()
+    # Protect angka dengan titik (mis: 15.30)
+    text = re.sub(r'(\d)\.(\d)', r'\1<DOT>\2', text)
+    sentences = re.split(r'(?<=[.!?])\s+', text)
+    sentences = [s.replace('<DOT>', '.').strip() for s in sentences if len(s) > 20]
 
-    def lc(s):
-        return s[0].lower() + s[1:] if len(s) > 1 else s.lower()
-
-    narrative = []
-
-    # Fakta utama
-    narrative.append(sentences[0])
-
-    # Penjelasan
-    if len(sentences) > 1:
-        narrative.append("Selain itu, " + lc(sentences[1]))
-
-    # Dampak / konteks
-    if len(sentences) > 2:
-        narrative.append("Sebagai dampaknya, " + lc(sentences[2]))
-
-    # Pastikan titik di akhir
-    return ". ".join(narrative).rstrip(".") + "."
-
-# ================= SUMMARIZER UTAMA =================
-def summarize(text, mode="medium"):
-    text = clean(text)
-    sentences = sent_tokenize(text)
-
-    if not sentences:
-        return ""
-
-    # Atur panjang ringkasan
-    if mode == "short":
-        top_n = 2
-    elif mode == "long":
-        top_n = max(5, len(sentences) // 8)
-    else:  # medium (default)
-        top_n = max(3, len(sentences) // 10)
-
-    top_n = min(top_n, len(sentences))
-
-    X = vectorizer.transform(sentences).toarray()
-    X = torch.tensor(X, dtype=torch.float32)
-
-    with torch.no_grad():
-        scores = torch.sigmoid(model(X)).numpy().flatten()
-
-    ranked = sorted(
-        [(scores[i], i, sentences[i]) for i in range(len(sentences))],
-        reverse=True
-    )
-
-    selected = sorted(ranked[:top_n], key=lambda x: x[1])
-    important_sentences = [s[2] for s in selected]
-
-    return build_narrative(important_sentences)
+    # Ambil 3 kalimat pertama sebagai fallback
+    selected = sentences[:3]
+    result = " ".join(selected)
+    if result and not result.endswith(('.', '!', '?')):
+        result += '.'
+    return result
 
 # ================= ENTRY POINT =================
 if __name__ == "__main__":
-    # Kalau dipanggil dari backend → baca dari stdin
     input_text = sys.stdin.read().strip()
 
-    # Kalau tidak ada stdin, pakai contoh
     if not input_text:
         input_text = """
         Banjir merendam sejumlah wilayah di Kulon Progo akibat hujan deras sejak malam hari.
@@ -111,4 +75,4 @@ if __name__ == "__main__":
         Warga diminta waspada terhadap potensi banjir susulan.
         """
 
-    print(summarize(input_text, mode="medium"))
+    print(summarize_with_ai(input_text))

@@ -22,6 +22,7 @@ const notificationRoutes = require("./routes/notifications");
 const tagRoutes = require("./routes/tags");
 const userRoutes = require("./routes/users");
 const pageContentRoutes = require("./routes/pageContents");
+const telegramRoutes = require("./routes/telegram");
 
 /* ══════════════════════════════════════════════════════════════════════════════
    APP CONFIGURATION
@@ -84,7 +85,12 @@ register(
   pageContentRoutes,
   "Dynamic Page Contents",
 );
-
+register(
+  "Telegram Notifications",
+  "/api/telegram",
+  telegramRoutes,
+  "Telegram Notification Service",
+);
 /* ══════════════════════════════════════════════════════════════════════════════
    SWAGGER DOCUMENTATION
 ══════════════════════════════════════════════════════════════════════════════ */

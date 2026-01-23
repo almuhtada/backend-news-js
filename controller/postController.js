@@ -1,6 +1,35 @@
 const { Post, User, Category, Tag, Notification } = require("../schema");
 const { Op } = require("sequelize");
 const { generateSummary } = require("../services/summarizer.service");
+const { sendTelegramMessage } = require("../services/telegram.service");
+
+// Generate summary from text (untuk tombol Ringkas di frontend)
+exports.summarizeText = async (req, res) => {
+  try {
+    const { content } = req.body;
+
+    if (!content || content.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Content is required",
+      });
+    }
+
+    const summary = await generateSummary(content);
+
+    res.json({
+      success: true,
+      data: { summary },
+    });
+  } catch (error) {
+    console.error("Error generating summary:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error generating summary",
+      error: error.message || error,
+    });
+  }
+};
 
 // Get all posts with pagination and filters
 exports.getAllPosts = async (req, res) => {
@@ -232,11 +261,25 @@ exports.createPost = async (req, res) => {
       slug: slug || title.toLowerCase().replace(/\s+/g, "-"),
       content,
       excerpt,
-      summary, // ✅ INI WAJIB
+      summary,
       featured_image,
       status,
       author_id: postAuthorId,
       published_at: status === "publish" ? new Date() : null,
+    });
+
+    // 🔔 TELEGRAM - PENULIS
+    await sendTelegramMessage({
+      topic: "PENULIS",
+      text: `
+          📝 *Berita Baru Dikirim*
+
+          *Judul:* ${post.title}
+          *Penulis:* ${author ? author.username : "Unknown"}
+          *Waktu:* ${new Date().toLocaleString("id-ID")}
+
+          Status: Menunggu review editor
+          `.trim(),
     });
 
     // Add categories

@@ -1,4 +1,5 @@
 const { Notification, Post, User } = require("../schema");
+const { sendTelegramMessage } = require("../services/telegram.service");
 const { Op } = require("sequelize");
 
 // Get all notifications with pagination
@@ -92,18 +93,15 @@ exports.createNotification = async (req, res) => {
     });
 
     // Include post data in response if post_id exists
-    const createdNotification = await Notification.findByPk(
-      notification.id,
-      {
-        include: [
-          {
-            model: Post,
-            as: "post",
-            attributes: ["id", "title", "slug", "featured_image", "status"],
-          },
-        ],
-      }
-    );
+    const createdNotification = await Notification.findByPk(notification.id, {
+      include: [
+        {
+          model: Post,
+          as: "post",
+          attributes: ["id", "title", "slug", "featured_image", "status"],
+        },
+      ],
+    });
 
     res.status(201).json({
       success: true,
@@ -137,13 +135,16 @@ exports.updateNotificationStatus = async (req, res) => {
     // Update notification status
     await notification.update({ status });
 
+    let post = null;
+
     // If approved and has post_id, update post status
     if (status === "approved" && notification.post_id && post_status) {
       const post = await Post.findByPk(notification.post_id);
       if (post) {
         await post.update({
           status: post_status,
-          published_at: post_status === "publish" ? new Date() : post.published_at,
+          published_at:
+            post_status === "publish" ? new Date() : post.published_at,
         });
       }
     }
@@ -155,7 +156,41 @@ exports.updateNotificationStatus = async (req, res) => {
         await post.update({ status: "archived" });
       }
     }
+    const author = post ? await User.findByPk(post.author_id) : null;
+    const editorName = req.user?.username || "Editor";
 
+    if (status === "approved") {
+      await sendTelegramMessage({
+        topic: "EDITOR",
+        text: `
+            ✅ *Berita Disetujui & Dipublish*
+
+            *Judul:* ${post?.title}
+            *Penulis:* ${author?.username || "Unknown"}
+            *Editor:* ${editorName}
+            *Waktu:* ${new Date().toLocaleString("id-ID")}
+
+            🔗 Link:
+            ${process.env.ADMIN_URL}/admin/berita/${post?.id}
+        `.trim(),
+      });
+    }
+
+    if (status === "rejected") {
+      await sendTelegramMessage({
+        topic: "EDITOR",
+        text: `
+            ❌ *Berita Ditolak*
+
+            *Judul:* ${post?.title}
+            *Penulis:* ${author?.username || "Unknown"}
+            *Editor:* ${editorName}
+            *Waktu:* ${new Date().toLocaleString("id-ID")}
+
+            Status: Ditolak editor
+        `.trim(),
+      });
+    }
     // Fetch updated notification with post
     const updatedNotification = await Notification.findByPk(id, {
       include: [
@@ -216,9 +251,15 @@ exports.getNotificationStats = async (req, res) => {
   try {
     const total = await Notification.count();
     const pending = await Notification.count({ where: { status: "pending" } });
-    const approved = await Notification.count({ where: { status: "approved" } });
-    const rejected = await Notification.count({ where: { status: "rejected" } });
-    const highPriority = await Notification.count({ where: { priority: "high" } });
+    const approved = await Notification.count({
+      where: { status: "approved" },
+    });
+    const rejected = await Notification.count({
+      where: { status: "rejected" },
+    });
+    const highPriority = await Notification.count({
+      where: { priority: "high" },
+    });
 
     res.json({
       success: true,

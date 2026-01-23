@@ -8,6 +8,7 @@ const {
   deletePost,
   getPopularPosts,
   getRecentPosts,
+  summarizeText,
 } = require("../controller/postController");
 
 const router = express.Router();
@@ -105,6 +106,46 @@ router.get("/", getAllPosts);
  *         description: Server error
  */
 router.get("/popular", getPopularPosts);
+
+/**
+ * @swagger
+ * /api/posts/summarize:
+ *   post:
+ *     summary: Generate AI summary from text
+ *     tags: [Posts]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - content
+ *             properties:
+ *               content:
+ *                 type: string
+ *                 description: Text content to summarize
+ *     responses:
+ *       200:
+ *         description: Summary generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     summary:
+ *                       type: string
+ *       400:
+ *         description: Content is required
+ *       500:
+ *         description: Server error
+ */
+router.post("/summarize", summarizeText);
 
 /**
  * @swagger
