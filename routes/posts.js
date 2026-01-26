@@ -8,6 +8,7 @@ const {
   deletePost,
   getPopularPosts,
   getRecentPosts,
+  getTrendingPosts,
   summarizeText,
 } = require("../controller/postController");
 
@@ -106,6 +107,37 @@ router.get("/", getAllPosts);
  *         description: Server error
  */
 router.get("/popular", getPopularPosts);
+
+/**
+ * @swagger
+ * /api/posts/trending:
+ *   get:
+ *     summary: Get trending/viral posts (based on engagement)
+ *     tags: [Posts]
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 20
+ *           default: 10
+ *         description: Number of posts to return
+ *       - in: query
+ *         name: hours
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 168
+ *           default: 24
+ *         description: Time window in hours
+ *     responses:
+ *       200:
+ *         description: Trending posts retrieved successfully
+ *       500:
+ *         description: Server error
+ */
+router.get("/trending", getTrendingPosts);
 
 /**
  * @swagger

@@ -179,7 +179,13 @@ exports.getPostBySlug = async (req, res) => {
         {
           model: User,
           as: "author",
-          attributes: ["id", "username", "email"],
+          attributes: ["id", "username", "email", "display_name"],
+        },
+        {
+          model: User,
+          as: "editor",
+          attributes: ["id", "username", "email", "display_name"],
+          required: false, // Editor is optional
         },
         {
           model: Category,
@@ -542,6 +548,105 @@ exports.getRecentPosts = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error fetching recent posts",
+      error: error.message,
+    });
+  }
+};
+
+// Get viral/trending posts (based on engagement in last 24 hours)
+exports.getTrendingPosts = async (req, res) => {
+  try {
+    const { limit = 5, hours = 24 } = req.query;
+    const sequelize = require("../config/database");
+    const requestedLimit = parseInt(limit);
+
+    // Calculate time threshold
+    const timeThreshold = new Date(Date.now() - hours * 60 * 60 * 1000);
+
+    // Common attributes for both queries
+    const postAttributes = [
+      "id",
+      "title",
+      "slug",
+      "excerpt",
+      "featured_image",
+      "views",
+      "published_at",
+      "createdAt",
+      "updatedAt",
+      // Calculate engagement score
+      [
+        sequelize.literal(`(
+          views * 1 +
+          (SELECT COUNT(*) FROM post_likes WHERE post_likes.post_id = Post.id) * 5 +
+          (SELECT COUNT(*) FROM comments WHERE comments.post_id = Post.id AND comments.status = 'approved') * 10
+        )`),
+        "engagement_score",
+      ],
+      [
+        sequelize.literal(
+          `(SELECT COUNT(*) FROM post_likes WHERE post_likes.post_id = Post.id)`
+        ),
+        "likes_count",
+      ],
+      [
+        sequelize.literal(
+          `(SELECT COUNT(*) FROM comments WHERE comments.post_id = Post.id AND comments.status = 'approved')`
+        ),
+        "comments_count",
+      ],
+    ];
+
+    const postIncludes = [
+      {
+        model: User,
+        as: "author",
+        attributes: ["id", "username"],
+      },
+      {
+        model: Category,
+        as: "categories",
+        attributes: ["id", "name", "slug"],
+        through: { attributes: [] },
+      },
+    ];
+
+    // Try to get posts from last X hours first
+    let posts = await Post.findAll({
+      where: {
+        status: "publish",
+        published_at: {
+          [Op.gte]: timeThreshold,
+        },
+      },
+      attributes: postAttributes,
+      include: postIncludes,
+      order: [[sequelize.literal("engagement_score"), "DESC"]],
+      limit: requestedLimit,
+    });
+
+    // If no posts or very few posts found, fallback to all-time engagement
+    if (posts.length < requestedLimit) {
+      posts = await Post.findAll({
+        where: {
+          status: "publish",
+        },
+        attributes: postAttributes,
+        include: postIncludes,
+        order: [[sequelize.literal("engagement_score"), "DESC"]],
+        limit: requestedLimit,
+      });
+    }
+
+    res.json({
+      success: true,
+      data: posts,
+    });
+  } catch (error) {
+    console.error("Error getting trending posts:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching trending posts",
       error: error.message,
     });
   }

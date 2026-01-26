@@ -23,6 +23,10 @@ const tagRoutes = require("./routes/tags");
 const userRoutes = require("./routes/users");
 const pageContentRoutes = require("./routes/pageContents");
 const telegramRoutes = require("./routes/telegram");
+const interactionRoutes = require("./routes/interaction");
+const commentRoutes = require("./routes/comments");
+const statsRoutes = require("./routes/stats");
+const settingRoutes = require("./routes/settings");
 
 /* ══════════════════════════════════════════════════════════════════════════════
    APP CONFIGURATION
@@ -90,6 +94,30 @@ register(
   "/api/telegram",
   telegramRoutes,
   "Telegram Notification Service",
+);
+register(
+  "Interactions",
+  "/api/posts",
+  interactionRoutes,
+  "Post Likes & Comments",
+);
+register(
+  "Comments",
+  "/api/comments",
+  commentRoutes,
+  "All Comments Management",
+);
+register(
+  "Statistics",
+  "/api/stats",
+  statsRoutes,
+  "Dashboard Statistics & Analytics",
+);
+register(
+  "Settings",
+  "/api/settings",
+  settingRoutes,
+  "Website Settings Management",
 );
 /* ══════════════════════════════════════════════════════════════════════════════
    SWAGGER DOCUMENTATION

@@ -13,6 +13,8 @@ const Publication = require("./publication");
 const About = require("./about");
 const Notification = require("./notification");
 const PageContent = require("./pageContent");
+const PostLike = require("./postLike");
+const Setting = require("./setting");
 
 // ========================================
 // Define Relationships
@@ -23,6 +25,10 @@ const PageContent = require("./pageContent");
 // User - Post (One-to-Many)
 User.hasMany(Post, { foreignKey: "author_id", as: "posts" });
 Post.belongsTo(User, { foreignKey: "author_id", as: "author" });
+
+// User - Post as Editor (One-to-Many)
+User.hasMany(Post, { foreignKey: "editor_id", as: "editedPosts" });
+Post.belongsTo(User, { foreignKey: "editor_id", as: "editor" });
 
 // User - Page (One-to-Many)
 User.hasMany(Page, { foreignKey: "author_id", as: "pages" });
@@ -70,6 +76,14 @@ Tag.belongsToMany(Post, {
 Post.hasMany(Comment, { foreignKey: "post_id", as: "comments" });
 Comment.belongsTo(Post, { foreignKey: "post_id", as: "post" });
 
+// Post - PostLike (One-to-Many)
+Post.hasMany(PostLike, { foreignKey: "post_id", as: "likes" });
+PostLike.belongsTo(Post, { foreignKey: "post_id", as: "post" });
+
+// User - PostLike (One-to-Many) - if like by registered user
+User.hasMany(PostLike, { foreignKey: "user_id", as: "postLikes" });
+PostLike.belongsTo(User, { foreignKey: "user_id", as: "user" });
+
 // ----- Page Relationships -----
 
 // Page self-reference for parent-child hierarchy
@@ -116,4 +130,6 @@ module.exports = {
   About,
   Notification,
   PageContent,
+  PostLike,
+  Setting,
 };

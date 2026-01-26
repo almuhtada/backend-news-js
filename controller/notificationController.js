@@ -121,7 +121,7 @@ exports.createNotification = async (req, res) => {
 exports.updateNotificationStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, post_status } = req.body; // status: approved/rejected, post_status: publish/archived
+    const { status, post_status, rejection_reason } = req.body; // status: approved/rejected, post_status: publish/archived, rejection_reason: alasan penolakan
 
     const notification = await Notification.findByPk(id);
 
@@ -139,21 +139,25 @@ exports.updateNotificationStatus = async (req, res) => {
 
     // If approved and has post_id, update post status
     if (status === "approved" && notification.post_id && post_status) {
-      const post = await Post.findByPk(notification.post_id);
+      post = await Post.findByPk(notification.post_id);
       if (post) {
         await post.update({
           status: post_status,
           published_at:
             post_status === "publish" ? new Date() : post.published_at,
+          rejection_reason: null, // Clear rejection reason when approved
         });
       }
     }
 
-    // If rejected and has post_id, archive the post
+    // If rejected and has post_id, update post with rejection reason
     if (status === "rejected" && notification.post_id) {
-      const post = await Post.findByPk(notification.post_id);
-      if (post && post.status === "draft") {
-        await post.update({ status: "archived" });
+      post = await Post.findByPk(notification.post_id);
+      if (post) {
+        await post.update({
+          status: "draft", // Keep as draft so author can edit and resubmit
+          rejection_reason: rejection_reason || "Tidak ada alasan yang diberikan",
+        });
       }
     }
     const author = post ? await User.findByPk(post.author_id) : null;
@@ -180,14 +184,15 @@ exports.updateNotificationStatus = async (req, res) => {
       await sendTelegramMessage({
         topic: "EDITOR",
         text: `
-            ❌ *Berita Ditolak*
+            ❌ Berita Ditolak
 
-            *Judul:* ${post?.title}
-            *Penulis:* ${author?.username || "Unknown"}
-            *Editor:* ${editorName}
-            *Waktu:* ${new Date().toLocaleString("id-ID")}
+            Judul: ${post?.title}
+            Penulis: ${author?.username || "Unknown"}
+            Editor: ${editorName}
+            Waktu: ${new Date().toLocaleString("id-ID")}
 
-            Status: Ditolak editor
+            Alasan Penolakan:
+            ${rejection_reason || "Tidak ada alasan yang diberikan"}
         `.trim(),
       });
     }

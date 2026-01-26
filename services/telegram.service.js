@@ -34,8 +34,6 @@ async function sendTelegramMessage({ topic, text, useHtml = false }) {
     payload.parse_mode = "HTML";
   }
 
-  console.log("Telegram payload:", JSON.stringify(payload, null, 2));
-
   const response = await fetch(`${TELEGRAM_API}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

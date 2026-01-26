@@ -35,6 +35,11 @@ const Post = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    editor_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      comment: "Editor who reviewed/edited the post",
+    },
     featured_image: {
       type: DataTypes.STRING(500),
       allowNull: true,
@@ -75,6 +80,12 @@ const Post = sequelize.define(
       type: DataTypes.BIGINT,
       allowNull: true,
       comment: "Original WordPress post ID",
+    },
+    // Rejection reason field
+    rejection_reason: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: "Reason for rejection if post was rejected",
     },
   },
   {
