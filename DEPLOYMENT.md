@@ -227,6 +227,8 @@ const API_BASE_URL = "https://yourdomain.com/api";
 
 ### D. Setup Proxy/Reverse Proxy (Optional)
 
+#### Opsi 1: Apache (.htaccess) - untuk cPanel
+
 Jika ingin akses backend via `/api`:
 
 Edit `.htaccess` di `public_html`:
@@ -242,6 +244,42 @@ RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule . /index.html [L]
 ```
+
+#### Opsi 2: Nginx - untuk VPS (Recommended)
+
+**Setup otomatis dengan script:**
+```bash
+cd /path/to/backend-news-express
+chmod +x setup-nginx.sh
+sudo ./setup-nginx.sh
+```
+
+**Setup manual:**
+Lihat dokumentasi lengkap di [NGINX-SETUP.md](NGINX-SETUP.md)
+
+```bash
+# Install Nginx
+sudo apt install nginx -y  # Ubuntu/Debian
+# atau
+sudo dnf install nginx -y  # AlmaLinux/RHEL
+
+# Copy config
+sudo cp nginx-api.conf /etc/nginx/sites-available/news-api
+sudo ln -s /etc/nginx/sites-available/news-api /etc/nginx/sites-enabled/
+
+# Test dan reload
+sudo nginx -t
+sudo systemctl reload nginx
+
+# Setup SSL
+sudo apt install certbot python3-certbot-nginx -y
+sudo certbot --nginx -d api.almuhtada.org
+```
+
+**File yang tersedia:**
+- `nginx-api.conf` - Konfigurasi nginx
+- `NGINX-SETUP.md` - Dokumentasi lengkap
+- `setup-nginx.sh` - Script auto-setup
 
 ---
 

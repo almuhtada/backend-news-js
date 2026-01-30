@@ -52,7 +52,7 @@ const Notification = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: "posts",
+        model: "wp_posts",
         key: "id",
       },
       comment: "ID post terkait (jika ada)",

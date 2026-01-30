@@ -45,7 +45,7 @@ async function migrateTagsToNewTable() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         UNIQUE KEY unique_post_tag (post_id, tag_id),
-        FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+        FOREIGN KEY (post_id) REFERENCES wp_posts(id) ON DELETE CASCADE,
         FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE,
         INDEX idx_post_id (post_id),
         INDEX idx_tag_id (tag_id)
@@ -53,17 +53,17 @@ async function migrateTagsToNewTable() {
     `);
     console.log("✅ New post_tags junction table created!");
 
-    // 4. Migrate relationships from posts_tags to post_tags
+    // 4. Migrate relationships from wp_post_tags to post_tags
     console.log("📋 Migrating post-tag relationships...");
     await sequelize.query(`
       INSERT IGNORE INTO post_tags (post_id, tag_id)
       SELECT DISTINCT
         wpt.post_id,
         t.id as tag_id
-      FROM posts_tags wpt
+      FROM wp_post_tags wpt
       INNER JOIN wp_tags wt ON wpt.tag_id = wt.id
       INNER JOIN tags t ON wt.slug = t.slug
-      WHERE wpt.post_id IN (SELECT id FROM posts);
+      WHERE wpt.post_id IN (SELECT id FROM wp_posts);
     `);
 
     // Count migrated relationships
@@ -79,7 +79,7 @@ async function migrateTagsToNewTable() {
     console.log("   1. Update Tag model in schema/tag.js to use 'tags' table");
     console.log("   2. Update PostTag model to use 'post_tags' table");
     console.log("   3. Test the application");
-    console.log("   4. If everything works, you can drop wp_tags and posts_tags tables");
+    console.log("   4. If everything works, you can drop wp_tags and wp_post_tags tables");
 
     process.exit(0);
   } catch (error) {
