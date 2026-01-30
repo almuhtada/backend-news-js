@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: news-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backups:/backups
+    networks:
+      - news-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    build: .
+    container_name: news-backend
+    restart: always
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=mysql
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - DB_PORT=3306
+      - JWT_SECRET=${JWT_SECRET}
+      - PORT=${PORT:-3001}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - TELEGRAM_TOPIC_PENULIS=${TELEGRAM_TOPIC_PENULIS}
+      - TELEGRAM_TOPIC_EDITOR=${TELEGRAM_TOPIC_EDITOR}
+      - BACKEND_URL=${BACKEND_URL}
+    ports:
+      - "${PORT:-3001}:3001"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./backups:/app/backups
+    networks:
+      - news-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  news-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+    driver: local

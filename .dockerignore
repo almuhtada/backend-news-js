@@ -1,0 +1,67 @@
+# Node modules
+node_modules
+npm-debug.log
+
+# Environment files
+.env.local
+.env.*.local
+
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+!README.md
+
+# Logs
+logs
+*.log
+server.log
+migration-full.log
+migration-images.log
+
+# Tests
+test
+*.test.js
+*.spec.js
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp
+temp
+*.tmp
+
+# Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Backup files
+backups
+*.sql
+*.dump
+
+# Scripts tidak diperlukan di production
+scripts/migrate-*.js
+scripts/seed-*.js
+scripts/clean-*.js
+seed*.js
+migrate*.js
+verify*.js
+createNotificationsTable.js
+
+# Postman
+postman_collection.json
+
+# Test files
+test-api.http

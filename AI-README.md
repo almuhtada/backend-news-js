@@ -135,28 +135,28 @@ Solutions:
 ```
 ┌─────────────────────────────────────────────┐
 │         Frontend (React Components)         │
-│  - AIClassification, AIExcerpt, etc.       │
+│  - AIClassification, AIExcerpt, etc.        │
 └────────────────────┬────────────────────────┘
                      │ HTTP/REST
 ┌────────────────────▼────────────────────────┐
-│     Backend Express API (/api/ai/*)        │
-│  - /api/ai/summarize (Groq LLM)            │
-│  - /api/ai/score-sentences (PyTorch)       │
-│  - /api/ai/health (Status check)           │
+│     Backend Express API (/api/ai/*)         │
+│  - /api/ai/summarize (Groq LLM)             │
+│  - /api/ai/score-sentences (PyTorch)        │
+│  - /api/ai/health (Status check)            │
 └────────────────────┬────────────────────────┘
                      │ Child Process (spawn)
 ┌────────────────────▼────────────────────────┐
 │        Python AI Scripts                    │
-│  - infer.py (Groq LLM + PyTorch)           │
+│  - infer.py (Groq LLM + PyTorch)            │
 │  - train.py (Model training)                │
 └────────────────────┬────────────────────────┘
                      │
         ┌────────────┴──────────┐
         │                       │
-   ┌────▼────┐          ┌──────▼────┐
-   │ Groq AI │          │ PyTorch   │
-   │ (LLM)   │          │ Model     │
-   └─────────┘          └───────────┘
+   ┌────▼────┐           ┌──────▼────┐
+   │ Groq AI │           │ PyTorch   │
+   │ (LLM)   │           │ Model     │
+   └─────────┘           └───────────┘
 ```
 
 ---

@@ -1,0 +1,53 @@
+# Systemd Service File untuk News Backend
+# Alternative to PM2
+
+# Installation:
+# 1. Copy file ini ke /etc/systemd/system/
+#    sudo cp news-backend.service /etc/systemd/system/
+#
+# 2. Edit WorkingDirectory dan paths sesuai lokasi aplikasi
+#
+# 3. Reload systemd
+#    sudo systemctl daemon-reload
+#
+# 4. Enable service
+#    sudo systemctl enable news-backend
+#
+# 5. Start service
+#    sudo systemctl start news-backend
+#
+# Commands:
+#   sudo systemctl status news-backend
+#   sudo systemctl restart news-backend
+#   sudo systemctl stop news-backend
+#   sudo journalctl -u news-backend -f
+
+[Unit]
+Description=News Backend API Service
+Documentation=https://github.com/yourusername/backend-news-express
+After=network.target mysql.service
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/news-backend
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node /var/www/news-backend/app.js
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=news-backend
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/www/news-backend/uploads /var/www/news-backend/logs
+
+# Resource limits
+LimitNOFILE=65536
+MemoryLimit=512M
+
+[Install]
+WantedBy=multi-user.target

@@ -25,3 +25,19 @@ uploads/
 # build output (kalau ada)
 dist/
 build/
+
+# Docker volumes
+docker-volumes/
+
+# Backups
+backups/
+*.sql
+*.sql.gz
+*.dump
+
+# Logs
+logs/
+*.log
+
+# PM2 logs
+.pm2/
