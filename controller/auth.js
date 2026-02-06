@@ -1,6 +1,7 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../schema/user");
+const { Op } = require("sequelize");
 
 const register = async (req, res) => {
   try {
@@ -31,12 +32,14 @@ const register = async (req, res) => {
   }
 };
 
-const login = async (req, res) => {
+const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { identifier, password } = req.body;
 
     // Find user
-    const user = await User.findOne({ where: { email } });
+    const user = await User.findOne({
+      where: { [Op.or]: [{ email: identifier }, { username: identifier }] },
+    });
     if (!user) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
@@ -49,7 +52,7 @@ const login = async (req, res) => {
 
     // Generate token
     const token = jwt.sign(
-      { id: user.id, email: user.email },
+      { id: user.id, email: user.email, username: user.username },
       process.env.JWT_SECRET,
       { expiresIn: "1h" },
     );
@@ -60,7 +63,7 @@ const login = async (req, res) => {
       user: { id: user.id, username: user.username, email: user.email },
     });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    next(error);
   }
 };
 
