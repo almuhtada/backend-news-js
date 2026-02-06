@@ -4,8 +4,8 @@
  */
 
 require("dotenv").config();
-const sequelize = require("../config/database");
-require("../schema"); // Load all models
+const sequelize = require("../../config/database");
+require("../../schema"); // Load all models
 
 async function syncDatabase() {
   console.log("🔄 Syncing database schema...\n");

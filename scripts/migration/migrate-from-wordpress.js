@@ -6,8 +6,8 @@
  */
 
 require("dotenv").config();
-const sequelize = require("../config/database");
-const { User, Post, Category, Tag, PostCategory, PostTag } = require("../schema");
+const sequelize = require("../../config/database");
+const { User, Post, Category, Tag, PostCategory, PostTag } = require("../../schema");
 
 // Prefix tabel WordPress (sesuaikan dengan database Anda)
 const WP_PREFIX = "wp8o_";

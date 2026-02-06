@@ -6,7 +6,7 @@
  */
 
 require("dotenv").config();
-const sequelize = require("../config/database");
+const sequelize = require("../../config/database");
 const {
   User,
   Post,
@@ -14,7 +14,7 @@ const {
   Tag,
   PostCategory,
   PostTag,
-} = require("../schema");
+} = require("../../schema");
 
 async function cleanSampleData() {
   console.log("🧹 Cleaning sample/test data...\n");

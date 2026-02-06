@@ -7,9 +7,9 @@
  */
 
 require("dotenv").config();
-const sequelize = require("../config/database");
+const sequelize = require("../../config/database");
 const bcrypt = require("bcryptjs");
-const { User, Post, Category, Tag } = require("../schema");
+const { User, Post, Category, Tag } = require("../../schema");
 
 async function seedData() {
   console.log("🌱 Starting seed process...\n");
