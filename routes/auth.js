@@ -1,5 +1,6 @@
 const express = require("express");
-const { register, login } = require("../controller/auth");
+const { register, login, profile } = require("../controller/auth");
+const authenticate = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -110,5 +111,39 @@ router.post("/register", register);
  *         description: Server error
  */
 router.post("/login", login);
+
+/**
+ * @swagger
+ * /api/auth/me:
+ *   get:
+ *     summary: Get current user profile
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User profile
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     username:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     role:
+ *                       type: string
+ *       401:
+ *         description: Token required or invalid
+ *       404:
+ *         description: User not found
+ */
+router.get("/me", authenticate, profile);
 
 module.exports = router;

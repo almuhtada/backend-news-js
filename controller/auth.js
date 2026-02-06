@@ -66,4 +66,19 @@ const login = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login };
+const profile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await User.findByPk(userId, {
+      attributes: ["id", "username", "email", "role"],
+    });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json({ user });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+module.exports = { register, login, profile };
