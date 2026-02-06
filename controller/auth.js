@@ -36,7 +36,6 @@ const login = async (req, res, next) => {
   try {
     const { identifier, password } = req.body;
 
-    // Find user
     const user = await User.findOne({
       where: { [Op.or]: [{ email: identifier }, { username: identifier }] },
     });
