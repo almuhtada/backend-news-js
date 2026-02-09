@@ -15,7 +15,8 @@ const storage = multer.diskStorage({
   },
   filename: function (req, file, cb) {
     const ext = path.extname(file.originalname);
-    const base = path.basename(file.originalname, ext)
+    const base = path
+      .basename(file.originalname, ext)
       .toLowerCase()
       .replace(/[^a-z0-9_-]/g, "-")
       .replace(/-+/g, "-")
@@ -37,7 +38,9 @@ const storage = multer.diskStorage({
 const fileFilter = (req, file, cb) => {
   // Allowed image types
   const allowedTypes = /jpeg|jpg|png|gif|webp/;
-  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+  const extname = allowedTypes.test(
+    path.extname(file.originalname).toLowerCase(),
+  );
   const mimetype = allowedTypes.test(file.mimetype);
 
   if (mimetype && extname) {
