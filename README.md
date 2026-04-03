@@ -1,263 +1,463 @@
-# Backend News Express - WordPress Migration
+# Al-Muhtada News — Backend API
 
-Backend REST API untuk aplikasi news/berita yang dimigrasikan dari WordPress.
+REST API untuk platform berita **Al-Muhtada** dibangun dengan Express.js, Sequelize ORM, dan MySQL. Dilengkapi AI summarizer (Groq), notifikasi Telegram, dan dokumentasi Swagger.
 
-## Fitur
+---
 
-- ✅ Migrasi data dari WordPress (posts, categories, tags, users)
-- ✅ REST API untuk Posts, Categories, Tags
-- ✅ Upload gambar dengan Multer
-- ✅ Sequelize ORM dengan MySQL
-- ✅ JWT Authentication
-- ✅ Pagination dan filtering
+## Tech Stack
 
-## Struktur Database
+| Layer | Library |
+|---|---|
+| Web Framework | Express 5 |
+| ORM | Sequelize 6 + MySQL2 |
+| Auth | JWT (jsonwebtoken) + bcryptjs |
+| Upload | Multer |
+| AI Summary | Groq SDK |
+| Notifikasi | Telegram Bot API |
+| Dokumentasi | Swagger UI Express |
+| Logger | Morgan (HTTP) + utils/logger |
 
-### Models
-- **User** - User/penulis artikel
-- **Post** - Artikel/berita
-- **Category** - Kategori artikel (dengan parent-child support)
-- **Tag** - Tag artikel
-- **PostCategory** - Relasi many-to-many Post-Category
-- **PostTag** - Relasi many-to-many Post-Tag
+---
 
-## Konfigurasi
+## Prasyarat
 
-### 1. Setup Database
+- Node.js >= 18
+- MySQL >= 8
+- (Opsional) Docker + Docker Compose
 
-Database sudah dikonfigurasi di `.env`:
-```env
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=root
-DB_NAME=wp397
-DB_PORT=8889
-JWT_SECRET=your_jwt_secret_key_here
-PORT=5000
-```
+---
 
-### 2. Install Dependencies
+## Instalasi
+
+### 1. Clone & Install
 
 ```bash
+git clone <repo-url>
+cd backend-news-js
 npm install
 ```
 
-### 3. Migrasi Data dari WordPress
-
-Jalankan script migrasi untuk copy data dari WordPress:
+### 2. Konfigurasi Environment
 
 ```bash
-npm run migrate
+cp .env.example .env
 ```
 
-Script ini akan:
-- Membaca data dari tabel WordPress (`wp_posts`, `wp_terms`, dll)
-- Membuat tabel baru untuk sistem custom
-- Copy semua categories, tags, users, dan posts
-- Maintain relationships (post-category, post-tag)
-- Preserve WordPress URLs untuk gambar
+Isi `.env`:
+
+```env
+# Database
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=news_db
+DB_USER=your_db_user
+DB_PASSWORD=your_db_password
+
+# App
+NODE_ENV=development
+PORT=3001
+BACKEND_URL=http://localhost:3001
+
+# Security — generate dengan: openssl rand -base64 32
+JWT_SECRET=your_jwt_secret_here
+
+# AI Summary (opsional) — https://console.groq.com
+GROQ_API_KEY=
+
+# Telegram (opsional)
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
+TELEGRAM_TOPIC_PENULIS=
+TELEGRAM_TOPIC_EDITOR=
+```
+
+### 3. Jalankan Server
+
+```bash
+# Development (auto-reload)
+npm run dev
+
+# Production
+npm start
+```
+
+Server berjalan di `http://localhost:3001`
+
+### 4. Docker (Opsional)
+
+```bash
+docker-compose up -d
+```
+
+---
+
+## Menjalankan dengan Database Baru
+
+```bash
+# Seed data awal
+npm run seed
+
+# Seed data About
+node scripts/seed/seedAboutData.js
+
+# Seed admin user
+node scripts/seed/seedAdminUser.js
+```
+
+---
+
+## Struktur Folder
+
+```
+backend-news-js/
+├── app.js                        # Entry point & bootstrap server
+├── config/
+│   └── database.js               # Konfigurasi Sequelize
+├── controller/
+│   ├── auth.js                   # Register, Login
+│   ├── postController.js         # CRUD Post + AI Summary + Trending
+│   ├── categoryController.js     # CRUD Category (parent-child)
+│   ├── tagController.js          # CRUD Tag
+│   ├── userController.js         # CRUD User
+│   ├── authorController.js       # Profil Author
+│   ├── achievementController.js  # Prestasi/Penghargaan
+│   ├── publicationController.js  # Publikasi Digital
+│   ├── aboutController.js        # Halaman About
+│   ├── pageContentController.js  # Konten Halaman Dinamis
+│   ├── notificationController.js # Sistem Notifikasi
+│   ├── notificationTelegramController.js
+│   ├── interactionController.js  # Like & Comment Post
+│   ├── settingController.js      # Pengaturan Website
+│   └── statsController.js        # Statistik Dashboard
+├── middleware/
+│   ├── auth.js                   # JWT Authentication
+│   └── upload.js                 # Multer (upload gambar, max 5MB)
+├── routes/
+│   ├── auth.js
+│   ├── posts.js
+│   ├── categories.js
+│   ├── tags.js
+│   ├── users.js
+│   ├── authors.js
+│   ├── achievements.js
+│   ├── publications.js
+│   ├── about.js
+│   ├── pageContents.js
+│   ├── notifications.js
+│   ├── telegram.js
+│   ├── interaction.js
+│   ├── comments.js
+│   ├── stats.js
+│   ├── settings.js
+│   └── upload.js
+├── schema/
+│   ├── index.js                  # Definisi semua relasi antar model
+│   ├── user.js
+│   ├── post.js
+│   ├── category.js
+│   ├── tag.js
+│   ├── comment.js
+│   ├── postCategory.js
+│   ├── postTag.js
+│   ├── postLike.js
+│   ├── notification.js
+│   ├── achievement.js
+│   ├── publication.js
+│   ├── about.js
+│   ├── pageContent.js
+│   ├── setting.js
+│   ├── media.js
+│   └── page.js
+├── services/
+│   ├── summarizer.service.js     # AI auto-summary pakai Groq
+│   └── telegram.service.js       # Kirim notifikasi ke Telegram
+├── utils/
+│   ├── index.js                  # Re-export semua utils
+│   ├── response.js               # Standardized API response helpers
+│   ├── pagination.js             # Parse & build pagination
+│   ├── slug.js                   # Generate slug unik
+│   ├── sanitize.js               # Strip HTML, generate excerpt
+│   └── logger.js                 # Logger dengan level & timestamp
+├── migrations/
+│   ├── add-editor-to-posts.js
+│   ├── add-rejection-reason.js
+│   └── create-post-likes-table.js
+├── scripts/
+│   ├── database/                 # Cek, cleanup, migrasi tabel
+│   ├── deployment/               # Script deploy VPS & Docker
+│   ├── maintenance/              # Clean content, sync DB, update URL
+│   ├── migration/                # Migrasi dari WordPress
+│   └── seed/                     # Seed data awal
+├── ai-news/
+│   ├── train.py                  # Training model AI lokal
+│   ├── infer.py                  # Inferensi model AI lokal
+│   └── dataset.jsonl
+├── docs/                         # Dokumentasi lengkap per topik
+├── config/nginx/                 # Config NGINX
+├── config/systemd/               # Config systemd service
+├── swagger.js                    # Konfigurasi Swagger
+├── ecosystem.config.js           # PM2 config
+├── Dockerfile
+├── docker-compose.yml
+└── .env.example
+```
+
+---
+
+## Database Models & Relasi
+
+| Model | Keterangan |
+|---|---|
+| `User` | Penulis & editor berita |
+| `Post` | Artikel berita (author + editor) |
+| `Category` | Kategori artikel (parent-child) |
+| `Tag` | Tag artikel |
+| `PostCategory` | Relasi many-to-many Post ↔ Category |
+| `PostTag` | Relasi many-to-many Post ↔ Tag |
+| `Comment` | Komentar bersarang (threaded) |
+| `PostLike` | Like per post |
+| `Notification` | Notifikasi aktivitas redaksi |
+| `Achievement` | Prestasi/penghargaan |
+| `Publication` | Publikasi digital |
+| `About` | Seksi halaman About |
+| `PageContent` | Konten halaman dinamis |
+| `Setting` | Pengaturan global website |
+| `Media` | File media/gambar |
+| `Page` | Halaman statis (parent-child) |
+
+---
 
 ## API Endpoints
+
+Dokumentasi interaktif tersedia di: `http://localhost:3001/api-docs`
+
+### Auth
+
+```
+POST   /api/auth/register         Daftar user baru
+POST   /api/auth/login            Login, dapat JWT token
+GET    /api/auth/profile          Profil user (butuh token)
+```
 
 ### Posts
 
 ```
-GET    /api/posts              - Get all posts (dengan pagination)
-GET    /api/posts/popular      - Get popular posts (berdasarkan views)
-GET    /api/posts/recent       - Get recent posts
-GET    /api/posts/:slug        - Get single post by slug
-POST   /api/posts              - Create new post
-PUT    /api/posts/:id          - Update post
-DELETE /api/posts/:id          - Delete post
+GET    /api/posts                 Semua post (pagination + filter)
+GET    /api/posts/popular         Post terpopuler (berdasarkan views)
+GET    /api/posts/recent          Post terbaru
+GET    /api/posts/trending        Post trending (engagement score)
+GET    /api/posts/:id             Detail post by ID
+GET    /api/posts/slug/:slug      Detail post by slug
+POST   /api/posts                 Buat post baru (AI summary otomatis)
+PUT    /api/posts/:id             Update post
+DELETE /api/posts/:id             Hapus post
+POST   /api/posts/summarize       Generate ringkasan teks (AI)
 ```
 
-**Query Parameters untuk GET /api/posts:**
-- `page` - Halaman (default: 1)
-- `limit` - Items per page (default: 10)
-- `status` - Filter by status (publish, draft, pending)
-- `category` - Filter by category slug
-- `tag` - Filter by tag slug
-- `search` - Search in title and content
-- `sort` - Sort by field (default: published_at)
-- `order` - Sort order (ASC/DESC, default: DESC)
+**Query Parameters `GET /api/posts`:**
 
-**Contoh:**
-```bash
-# Get all published posts
-GET /api/posts?status=publish&page=1&limit=10
-
-# Get posts by category
-GET /api/posts?category=teknologi
-
-# Search posts
-GET /api/posts?search=javascript&status=publish
-```
+| Parameter | Default | Keterangan |
+|---|---|---|
+| `page` | 1 | Nomor halaman |
+| `limit` | 10 | Item per halaman |
+| `status` | — | `publish` / `draft` / `pending` |
+| `category` | — | Filter by category slug |
+| `tag` | — | Filter by tag slug |
+| `search` | — | Cari di title & content |
+| `sort` | `published_at` | Field untuk sorting |
+| `order` | `DESC` | `ASC` atau `DESC` |
 
 ### Categories
 
 ```
-GET    /api/categories              - Get all categories
-GET    /api/categories/:slug        - Get single category
-GET    /api/categories/:slug/posts  - Get posts by category
-POST   /api/categories              - Create new category
-PUT    /api/categories/:id          - Update category
-DELETE /api/categories/:id          - Delete category
+GET    /api/categories            Semua kategori (dengan post_count)
+GET    /api/categories/:slug      Detail kategori
+GET    /api/categories/:slug/posts Post dalam kategori (pagination)
+POST   /api/categories            Buat kategori baru
+PUT    /api/categories/:id        Update kategori
+DELETE /api/categories/:id        Hapus kategori
+```
+
+### Tags
+
+```
+GET    /api/tags                  Semua tag
+GET    /api/tags/:slug            Detail tag
+POST   /api/tags                  Buat tag
+PUT    /api/tags/:id              Update tag
+DELETE /api/tags/:id              Hapus tag
+```
+
+### Users
+
+```
+GET    /api/users                 Semua user (pagination + filter role)
+GET    /api/users/:id             Detail user
+POST   /api/users                 Buat user baru
+PUT    /api/users/:id             Update user
+DELETE /api/users/:id             Hapus user
 ```
 
 ### Upload
 
 ```
-POST   /api/upload/image     - Upload single image
-POST   /api/upload/images    - Upload multiple images (max 10)
+POST   /api/upload/image          Upload 1 gambar (field: image)
+POST   /api/upload/images         Upload banyak gambar (max 10, field: images)
 ```
 
-**Contoh Upload:**
+**Contoh:**
+
 ```bash
-curl -X POST http://localhost:5000/api/upload/image \
-  -F "image=@/path/to/image.jpg"
+curl -X POST http://localhost:3001/api/upload/image \
+  -H "Authorization: Bearer <token>" \
+  -F "image=@/path/to/file.jpg"
 ```
 
-Response:
+### Lainnya
+
+```
+GET/POST/PUT/DELETE  /api/authors
+GET/POST/PUT/DELETE  /api/achievements
+GET/POST/PUT/DELETE  /api/publications
+GET/POST/PUT/DELETE  /api/about
+GET/POST/PUT/DELETE  /api/page-contents
+GET/POST/PUT/DELETE  /api/notifications
+GET/POST/PUT/DELETE  /api/settings
+GET/POST/PUT/DELETE  /api/comments
+POST/DELETE          /api/posts/:id/like
+GET                  /api/stats
+POST                 /api/telegram/send
+```
+
+---
+
+## Format Response
+
+### Sukses
+
 ```json
 {
   "success": true,
-  "message": "Image uploaded successfully",
-  "data": {
-    "filename": "1234567890-123456789.jpg",
-    "url": "/uploads/images/1234567890-123456789.jpg",
-    "fullUrl": "http://localhost:5000/uploads/images/1234567890-123456789.jpg",
-    "size": 123456
-  }
+  "message": "Success",
+  "data": { ... }
 }
 ```
 
-### Authentication
+### Sukses dengan Pagination
 
-```
-POST   /api/auth/register    - Register new user
-POST   /api/auth/login       - Login user
-```
-
-## Menjalankan Server
-
-### Development mode (dengan auto-reload):
-```bash
-npm run dev
-```
-
-### Production mode:
-```bash
-npm start
-```
-
-Server akan berjalan di `http://localhost:5000`
-
-## Struktur Folder
-
-```
-backend-news-express/
-├── config/
-│   └── database.js          # Konfigurasi Sequelize
-├── controller/
-│   ├── auth.js              # Auth controller
-│   ├── postController.js    # Post CRUD operations
-│   └── categoryController.js # Category CRUD operations
-├── middleware/
-│   └── upload.js            # Multer configuration
-├── routes/
-│   ├── auth.js              # Auth routes
-│   ├── posts.js             # Post routes
-│   ├── categories.js        # Category routes
-│   └── upload.js            # Upload routes
-├── schema/
-│   ├── index.js             # Model relationships
-│   ├── user.js              # User model
-│   ├── post.js              # Post model
-│   ├── category.js          # Category model
-│   ├── tag.js               # Tag model
-│   ├── postCategory.js      # Post-Category junction
-│   └── postTag.js           # Post-Tag junction
-├── scripts/
-│   └── migrate-from-wordpress.js  # Migration script
-├── uploads/
-│   └── images/              # Uploaded images
-├── .env                     # Environment variables
-├── app.js                   # Main application
-└── package.json
-```
-
-## Response Format
-
-### Success Response
 ```json
 {
   "success": true,
-  "data": { ... },
+  "data": [ ... ],
   "pagination": {
     "total": 100,
     "page": 1,
     "limit": 10,
-    "totalPages": 10
+    "totalPages": 10,
+    "hasNext": true,
+    "hasPrev": false
   }
 }
 ```
 
-### Error Response
+### Error
+
 ```json
 {
   "success": false,
-  "message": "Error message",
-  "error": "Detailed error (development only)"
+  "message": "Pesan error",
+  "error": "Detail error (hanya di development)"
 }
 ```
 
-## Frontend Integration
+---
 
-Untuk mengintegrasikan dengan frontend:
+## Scripts NPM
 
-1. Set base URL di frontend: `http://localhost:5000/api`
-2. Untuk gambar WordPress yang sudah ada, URL tetap menggunakan path original dari WordPress
-3. Untuk gambar baru yang diupload, gunakan endpoint `/api/upload/image`
-4. Pastikan CORS sudah enabled (sudah disetup di app.js)
+```bash
+npm run dev              # Jalankan development server (nodemon)
+npm start                # Jalankan production server
 
-## Catatan Penting
+npm run seed             # Seed data sample
+npm run sync:db          # Sinkronisasi struktur database
 
-### Prefix WordPress
-Script migrasi menggunakan prefix `wp_` untuk tabel WordPress. Jika prefix berbeda, edit di `scripts/migrate-from-wordpress.js`:
+# Migrasi WordPress
+npm run migrate          # Migrasi data dari WordPress
+npm run migrate:all      # Migrasi semua data WordPress
+npm run migrate:img      # Migrasi gambar ke lokal
+npm run migrate:img:dry  # Dry-run migrasi gambar
+npm run restore:img      # Restore gambar dari backup
+npm run update:img-urls  # Update URL gambar di database
+npm run cleanup:wp       # Hapus tabel WordPress lama
 
-```javascript
-const WP_PREFIX = "wp_"; // Ganti sesuai prefix Anda
+# Maintenance
+npm run clean:sample     # Hapus data sample
+npm run clean:content    # Bersihkan konten WP
+npm run fix:img-urls     # Fix URL featured image
+npm run jest             # Jalankan unit test
 ```
 
-### WordPress Password
-Password dari WordPress akan tetap disimpan dengan hash WordPress. Untuk login di sistem baru, users perlu reset password atau Anda bisa implement WordPress password verification.
+---
 
-### Gambar/Media
-- Gambar dari WordPress akan tetap menggunakan URL original (field `featured_image` di Post)
-- Untuk upload gambar baru, gunakan endpoint `/api/upload/image`
-- Gambar disimpan di folder `uploads/images/`
+## Fitur Utama
 
-## Next Steps
+### AI Auto-Summary
+Setiap kali post dibuat, sistem otomatis generate ringkasan menggunakan **Groq API**. Jika Groq tidak tersedia, fallback ke excerpt manual.
 
-1. ✅ Migrasi data dari WordPress
-2. ⏳ Setup authentication middleware
-3. ⏳ Implement authorization (role-based access)
-4. ⏳ Setup frontend (React/Vue/Next.js)
-5. ⏳ Deploy ke production
+```
+GROQ_API_KEY= # Isi di .env untuk mengaktifkan fitur ini
+```
+
+### Notifikasi Telegram
+Setiap aktivitas redaksi (post baru, approve, reject) dikirim ke grup Telegram melalui thread berbeda untuk **Penulis** dan **Editor**.
+
+```
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
+TELEGRAM_TOPIC_PENULIS=
+TELEGRAM_TOPIC_EDITOR=
+```
+
+### Upload Gambar
+- Format: JPEG, JPG, PNG, GIF, WebP
+- Ukuran maksimal: **5 MB**
+- Disimpan di: `uploads/images/`
+- Nama file otomatis di-sanitasi dan di-deduplicate
+
+---
 
 ## Troubleshooting
 
-### Database connection error
-- Pastikan MAMP sudah running
-- Check port MySQL (default MAMP: 8889)
-- Verify credentials di .env
+**Database connection error**
+- Pastikan MySQL berjalan di port yang benar
+- Cek kredensial di `.env`
+- Jalankan `node scripts/database/check-database-tables.js` untuk verifikasi
 
-### Migration error
-- Pastikan tabel WordPress masih ada
-- Check prefix tabel WordPress
-- Verify database connection
+**Port sudah dipakai**
+```bash
+# Linux/Mac
+lsof -ti:3001 | xargs kill -9
 
-### Upload error
-- Check folder permissions untuk `uploads/`
-- Verify file size (max 5MB)
-- Check file type (hanya images)
+# Windows
+netstat -ano | findstr :3001
+taskkill /PID <PID> /F
+```
+
+**Upload gagal**
+- Cek permission folder `uploads/`
+- Pastikan ukuran file < 5MB
+- Pastikan tipe file adalah gambar
+
+**AI summary tidak berfungsi**
+- Pastikan `GROQ_API_KEY` sudah diisi di `.env`
+- Sistem akan fallback ke excerpt jika API tidak tersedia
+
+---
+
+## Deployment
+
+Lihat panduan lengkap di folder `docs/deployment/`:
+- `DEPLOYMENT.md` — panduan umum
+- `DOCKER-DEPLOYMENT.md` — deploy dengan Docker
+- `NGINX-SETUP.md` — konfigurasi NGINX reverse proxy
+- `DEPLOYMENT-CHECKLIST.md` — checklist sebelum go-live
