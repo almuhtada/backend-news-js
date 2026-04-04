@@ -1,0 +1,7 @@
+node_modules/
+uploads/
+backups-*/
+docs/
+ai-news/
+scripts/
+migrations/

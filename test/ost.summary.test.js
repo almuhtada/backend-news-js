@@ -1,5 +1,5 @@
 // 🔥 MOCK PYTHON SUMMARIZER
-jest.mock("../services/summarizer.service", () => ({
+jest.mock("../src/services/summarizer.service", () => ({
   generateSummary: jest.fn(async () => {
     return "Ini adalah ringkasan otomatis hasil AI.";
   }),

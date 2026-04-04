@@ -110,74 +110,25 @@ node scripts/seed/seedAdminUser.js
 
 ```
 backend-news-js/
-├── app.js                        # Entry point & bootstrap server
+├── app.js                        # Compatibility bootstrap -> src/server.js
+├── src/                          # Application source (clean runtime layer)
+│   ├── server.js                 # Main server bootstrap
+│   ├── swagger.js                # Swagger spec & docs config
+│   ├── config/
+│   │   └── database.js           # Sequelize connection
+│   ├── modules/                  # Domain-based module registry
+│   ├── controller/               # Request handlers (business orchestration)
+│   ├── middleware/               # Auth/upload and request middleware
+│   ├── routes/                   # API route registration
+│   ├── schema/                   # Sequelize models + associations
+│   ├── services/                 # External integrations (AI/Telegram)
+│   ├── shared/                   # Cross-cutting constants/http/middleware
+│   └── utils/                    # Shared helpers (backward-compatible)
 ├── config/
-│   └── database.js               # Konfigurasi Sequelize
-├── controller/
-│   ├── auth.js                   # Register, Login
-│   ├── postController.js         # CRUD Post + AI Summary + Trending
-│   ├── categoryController.js     # CRUD Category (parent-child)
-│   ├── tagController.js          # CRUD Tag
-│   ├── userController.js         # CRUD User
-│   ├── authorController.js       # Profil Author
-│   ├── achievementController.js  # Prestasi/Penghargaan
-│   ├── publicationController.js  # Publikasi Digital
-│   ├── aboutController.js        # Halaman About
-│   ├── pageContentController.js  # Konten Halaman Dinamis
-│   ├── notificationController.js # Sistem Notifikasi
-│   ├── notificationTelegramController.js
-│   ├── interactionController.js  # Like & Comment Post
-│   ├── settingController.js      # Pengaturan Website
-│   └── statsController.js        # Statistik Dashboard
-├── middleware/
-│   ├── auth.js                   # JWT Authentication
-│   └── upload.js                 # Multer (upload gambar, max 5MB)
-├── routes/
-│   ├── auth.js
-│   ├── posts.js
-│   ├── categories.js
-│   ├── tags.js
-│   ├── users.js
-│   ├── authors.js
-│   ├── achievements.js
-│   ├── publications.js
-│   ├── about.js
-│   ├── pageContents.js
-│   ├── notifications.js
-│   ├── telegram.js
-│   ├── interaction.js
-│   ├── comments.js
-│   ├── stats.js
-│   ├── settings.js
-│   └── upload.js
-├── schema/
-│   ├── index.js                  # Definisi semua relasi antar model
-│   ├── user.js
-│   ├── post.js
-│   ├── category.js
-│   ├── tag.js
-│   ├── comment.js
-│   ├── postCategory.js
-│   ├── postTag.js
-│   ├── postLike.js
-│   ├── notification.js
-│   ├── achievement.js
-│   ├── publication.js
-│   ├── about.js
-│   ├── pageContent.js
-│   ├── setting.js
-│   ├── media.js
-│   └── page.js
-├── services/
-│   ├── summarizer.service.js     # AI auto-summary pakai Groq
-│   └── telegram.service.js       # Kirim notifikasi ke Telegram
-├── utils/
-│   ├── index.js                  # Re-export semua utils
-│   ├── response.js               # Standardized API response helpers
-│   ├── pagination.js             # Parse & build pagination
-│   ├── slug.js                   # Generate slug unik
-│   ├── sanitize.js               # Strip HTML, generate excerpt
-│   └── logger.js                 # Logger dengan level & timestamp
+│   ├── database.js               # Backward-compatible shim -> src/config
+│   ├── nginx/                    # NGINX deployment config
+│   └── systemd/                  # systemd service config
+├── swagger.js                    # Backward-compatible shim -> src/swagger.js
 ├── migrations/
 │   ├── add-editor-to-posts.js
 │   ├── add-rejection-reason.js
@@ -193,9 +144,6 @@ backend-news-js/
 │   ├── infer.py                  # Inferensi model AI lokal
 │   └── dataset.jsonl
 ├── docs/                         # Dokumentasi lengkap per topik
-├── config/nginx/                 # Config NGINX
-├── config/systemd/               # Config systemd service
-├── swagger.js                    # Konfigurasi Swagger
 ├── ecosystem.config.js           # PM2 config
 ├── Dockerfile
 ├── docker-compose.yml
@@ -394,6 +342,11 @@ npm run cleanup:wp       # Hapus tabel WordPress lama
 npm run clean:sample     # Hapus data sample
 npm run clean:content    # Bersihkan konten WP
 npm run fix:img-urls     # Fix URL featured image
+npm run test             # Jalankan test sekali (CI friendly)
+npm run test:watch       # Jalankan test mode watch
+npm run test:ci          # Test + coverage
+npm run lint             # Cek kualitas kode (ESLint)
+npm run lint:fix         # Auto-fix issue lint yang aman
 npm run jest             # Jalankan unit test
 ```
 

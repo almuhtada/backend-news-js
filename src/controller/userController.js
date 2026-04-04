@@ -1,4 +1,12 @@
 const User = require("../schema/user");
+const { Op } = require("sequelize");
+const {
+  ok,
+  created,
+  badRequest,
+  notFound,
+  serverError,
+} = require("../shared/http/response");
 
 const getUsers = async (req, res) => {
   try {
@@ -14,10 +22,10 @@ const getUsers = async (req, res) => {
     if (search) {
       whereClause = {
         ...whereClause,
-        [require("sequelize").Op.or]: [
-          { username: { [require("sequelize").Op.like]: `%${search}%` } },
-          { email: { [require("sequelize").Op.like]: `%${search}%` } },
-          { display_name: { [require("sequelize").Op.like]: `%${search}%` } },
+        [Op.or]: [
+          { username: { [Op.like]: `%${search}%` } },
+          { email: { [Op.like]: `%${search}%` } },
+          { display_name: { [Op.like]: `%${search}%` } },
         ],
       };
     }
@@ -29,7 +37,7 @@ const getUsers = async (req, res) => {
       order: [["createdAt", "DESC"]],
     });
 
-    res.json({
+    return res.json({
       success: true,
       data: users,
       pagination: {
@@ -40,9 +48,7 @@ const getUsers = async (req, res) => {
       },
     });
   } catch (error) {
-    res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
+    return serverError(res, error, "Server error");
   }
 };
 
@@ -52,16 +58,12 @@ const getUser = async (req, res) => {
     const user = await User.findByPk(id);
 
     if (!user) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+      return notFound(res, "User not found");
     }
 
-    res.json({ success: true, data: user });
+    return ok(res, user);
   } catch (error) {
-    res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
+    return serverError(res, error, "Server error");
   }
 };
 
@@ -77,9 +79,7 @@ const createUser = async (req, res) => {
     // Check if user exists
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
-      return res
-        .status(400)
-        .json({ success: false, message: "User already exists" });
+      return badRequest(res, "User already exists");
     }
 
     // Hash password
@@ -99,11 +99,9 @@ const createUser = async (req, res) => {
     const userResponse = { ...user.toJSON() };
     delete userResponse.password;
 
-    res.status(201).json({ success: true, data: userResponse });
+    return created(res, userResponse, "User created successfully");
   } catch (error) {
-    res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
+    return serverError(res, error, "Server error");
   }
 };
 
@@ -114,9 +112,7 @@ const updateUser = async (req, res) => {
 
     const user = await User.findByPk(id);
     if (!user) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+      return notFound(res, "User not found");
     }
 
     // Prepare update data
@@ -138,11 +134,9 @@ const updateUser = async (req, res) => {
     const userResponse = { ...user.toJSON() };
     delete userResponse.password;
 
-    res.json({ success: true, data: userResponse });
+    return ok(res, userResponse, "User updated successfully");
   } catch (error) {
-    res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
+    return serverError(res, error, "Server error");
   }
 };
 
@@ -152,17 +146,13 @@ const deleteUser = async (req, res) => {
     const user = await User.findByPk(id);
 
     if (!user) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+      return notFound(res, "User not found");
     }
 
     await user.destroy();
-    res.json({ success: true });
+    return ok(res, null, "User deleted successfully");
   } catch (error) {
-    res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
+    return serverError(res, error, "Server error");
   }
 };
 

@@ -1,4 +1,10 @@
 const Setting = require("../schema/setting");
+const {
+  ok,
+  badRequest,
+  notFound,
+  serverError,
+} = require("../shared/http/response");
 
 // Default settings to seed the database (kosong - admin isi sendiri)
 const defaultSettings = [
@@ -44,17 +50,13 @@ const getAllSettings = async (req, res) => {
       return acc;
     }, {});
 
-    res.json({
+    return res.json({
       success: true,
       data: groupedSettings,
       raw: settings,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    return serverError(res, error, "Server error");
   }
 };
 
@@ -67,22 +69,12 @@ const getSettingByKey = async (req, res) => {
     });
 
     if (!setting) {
-      return res.status(404).json({
-        success: false,
-        message: "Setting not found",
-      });
+      return notFound(res, "Setting not found");
     }
 
-    res.json({
-      success: true,
-      data: setting,
-    });
+    return ok(res, setting);
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    return serverError(res, error, "Server error");
   }
 };
 
@@ -100,17 +92,13 @@ const getSettingsByGroup = async (req, res) => {
       return acc;
     }, {});
 
-    res.json({
+    return res.json({
       success: true,
       data: settingsMap,
       raw: settings,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    return serverError(res, error, "Server error");
   }
 };
 
@@ -118,12 +106,10 @@ const getSettingsByGroup = async (req, res) => {
 const updateSetting = async (req, res) => {
   try {
     const { key } = req.params;
-    const { value } = req.body;
 
     const [setting, created] = await Setting.upsert(
       {
         key,
-        value,
         ...req.body,
       },
       {
@@ -131,17 +117,13 @@ const updateSetting = async (req, res) => {
       }
     );
 
-    res.json({
-      success: true,
-      message: created ? "Setting created" : "Setting updated",
-      data: setting,
-    });
+    return ok(
+      res,
+      setting,
+      created ? "Setting created" : "Setting updated"
+    );
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    return serverError(res, error, "Server error");
   }
 };
 
@@ -151,10 +133,7 @@ const bulkUpdateSettings = async (req, res) => {
     const { settings } = req.body;
 
     if (!settings || !Array.isArray(settings)) {
-      return res.status(400).json({
-        success: false,
-        message: "Settings array is required",
-      });
+      return badRequest(res, "Settings array is required");
     }
 
     const results = [];
@@ -180,17 +159,9 @@ const bulkUpdateSettings = async (req, res) => {
       results.push(updated);
     }
 
-    res.json({
-      success: true,
-      message: `${results.length} settings updated`,
-      data: results,
-    });
+    return ok(res, results, `${results.length} settings updated`);
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    return serverError(res, error, "Server error");
   }
 };
 
@@ -224,17 +195,9 @@ const saveAllSettings = async (req, res) => {
       order: [["group", "ASC"], ["id", "ASC"]],
     });
 
-    res.json({
-      success: true,
-      message: "Settings saved successfully",
-      data: updatedSettings,
-    });
+    return ok(res, updatedSettings, "Settings saved successfully");
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    return serverError(res, error, "Server error");
   }
 };
 
@@ -253,17 +216,13 @@ const initializeSettings = async (req, res) => {
 
     await Setting.bulkCreate(defaultSettings);
 
-    res.json({
+    return res.json({
       success: true,
       message: "Settings initialized with defaults",
       count: defaultSettings.length,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    return serverError(res, error, "Server error");
   }
 };
 

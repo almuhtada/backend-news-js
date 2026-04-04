@@ -1,5 +1,6 @@
 const { Post, Category, PostCategory, PostLike, Comment } = require("../schema");
 const sequelize = require("../config/database");
+const { ok, serverError } = require("../shared/http/response");
 
 /**
  * Get category engagement statistics
@@ -65,17 +66,10 @@ exports.getCategoryEngagement = async (req, res) => {
       (a, b) => b.views - a.views
     );
 
-    return res.status(200).json({
-      success: true,
-      data: result,
-    });
+    return ok(res, result);
   } catch (error) {
     console.error("Error getting category engagement:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    return serverError(res, error, "Internal server error");
   }
 };
 
@@ -106,16 +100,9 @@ exports.getCategoryDistribution = async (req, res) => {
       .filter((cat) => cat.value > 0) // Only include categories with posts
       .sort((a, b) => b.value - a.value);
 
-    return res.status(200).json({
-      success: true,
-      data: result,
-    });
+    return ok(res, result);
   } catch (error) {
     console.error("Error getting category distribution:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    return serverError(res, error, "Internal server error");
   }
 };

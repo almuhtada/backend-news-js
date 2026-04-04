@@ -1,0 +1,20 @@
+module.exports = [
+  require('./auth'),
+  require('./posts'),
+  require('./categories'),
+  require('./upload'),
+  require('./authors'),
+  require('./achievements'),
+  require('./publications'),
+  require('./about'),
+  require('./notifications'),
+  require('./tags'),
+  require('./users'),
+  require('./page-contents'),
+  require('./telegram'),
+  require('./interactions'),
+  require('./comments'),
+  require('./stats'),
+  require('./settings'),
+];
+

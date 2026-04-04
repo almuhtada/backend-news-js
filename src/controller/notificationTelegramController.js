@@ -1,4 +1,5 @@
 const { sendTelegramMessage } = require("../services/telegram.service");
+const { ok, badRequest, serverError } = require("../shared/http/response");
 
 /**
  * Controller Telegram Notification
@@ -15,22 +16,13 @@ async function telegramNotificationController(req, res) {
     } else if (type === "editor") {
       await handleEditor(req.body);
     } else {
-      return res.status(400).json({
-        success: false,
-        message: "Tipe notifikasi tidak dikenali",
-      });
+      return badRequest(res, "Tipe notifikasi tidak dikenali");
     }
 
-    res.json({
-      success: true,
-      message: "Notifikasi Telegram berhasil dikirim",
-    });
+    return ok(res, null, "Notifikasi Telegram berhasil dikirim");
   } catch (error) {
     console.error("Telegram notification error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Gagal mengirim notifikasi Telegram",
-    });
+    return serverError(res, error, "Gagal mengirim notifikasi Telegram");
   }
 }
 
