@@ -1,50 +1,49 @@
 const { Category, Post } = require("../schema");
+const sequelize = require("../config/database");
+
+// Simple cache (TTL: 5 menit)
+const _cache = new Map();
+function getCache(key) {
+  const e = _cache.get(key);
+  if (!e) return null;
+  if (Date.now() - e.ts > 5 * 60 * 1000) { _cache.delete(key); return null; }
+  return e.data;
+}
+function setCache(key, data) { _cache.set(key, { data, ts: Date.now() }); }
+function clearCache() { _cache.clear(); }
 
 // Get all categories
 exports.getAllCategories = async (req, res) => {
   try {
-    const { Sequelize } = require('sequelize');
-    const categories = await Category.findAll({
-      attributes: {
-        include: [
-          [
-            Sequelize.literal(`(
-              SELECT COUNT(DISTINCT posts.id)
-              FROM posts
-              INNER JOIN post_categories ON posts.id = post_categories.post_id
-              WHERE post_categories.category_id = Category.id
-              AND posts.status = 'publish'
-            )`),
-            'post_count'
-          ]
-        ]
-      },
-      include: [
-        {
-          model: Category,
-          as: "parent",
-          attributes: ["id", "name", "slug"],
-        },
-        {
-          model: Category,
-          as: "children",
-          attributes: ["id", "name", "slug"],
-        },
-      ],
-      order: [["name", "ASC"]],
-    });
+    const cached = getCache("categories");
+    if (cached) return res.json({ success: true, data: cached });
 
-    res.json({
-      success: true,
-      data: categories,
-    });
+    const rows = await sequelize.query(
+      `SELECT
+         cat.id, cat.name, cat.slug, cat.description, cat.parent_id,
+         p.name  AS parent_name,
+         p.slug  AS parent_slug,
+         COUNT(DISTINCT CASE WHEN po.status = 'publish' THEN pc.post_id END) AS post_count
+       FROM categories cat
+       LEFT JOIN categories p        ON p.id  = cat.parent_id
+       LEFT JOIN post_categories pc  ON pc.category_id = cat.id
+       LEFT JOIN posts po            ON po.id = pc.post_id
+       GROUP BY cat.id, cat.name, cat.slug, cat.description, cat.parent_id, p.name, p.slug
+       ORDER BY cat.name ASC`,
+      { type: sequelize.QueryTypes.SELECT }
+    );
+
+    // Attach children list
+    const map = {};
+    rows.forEach((r) => { map[r.id] = { ...r, post_count: Number(r.post_count) || 0, children: [] }; });
+    rows.forEach((r) => { if (r.parent_id && map[r.parent_id]) map[r.parent_id].children.push({ id: r.id, name: r.name, slug: r.slug }); });
+    const categories = Object.values(map);
+
+    setCache("categories", categories);
+    res.json({ success: true, data: categories });
   } catch (error) {
     console.error("Error getting categories:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error fetching categories",
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: "Error fetching categories", error: error.message });
   }
 };
 
@@ -109,6 +108,7 @@ exports.createCategory = async (req, res) => {
       parent_id: parent_id || null,
     });
 
+    clearCache();
     res.status(201).json({
       success: true,
       data: category,
@@ -145,6 +145,7 @@ exports.updateCategory = async (req, res) => {
       parent_id: parent_id !== undefined ? parent_id : category.parent_id,
     });
 
+    clearCache();
     res.json({
       success: true,
       data: category,
@@ -174,7 +175,7 @@ exports.deleteCategory = async (req, res) => {
     }
 
     await category.destroy();
-
+    clearCache();
     res.json({
       success: true,
       message: "Category deleted successfully",

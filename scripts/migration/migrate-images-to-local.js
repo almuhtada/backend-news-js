@@ -85,6 +85,7 @@ const stats = {
   imagesSkipped: 0,
   imagesFailed: 0,
   urlsUpdated: 0,
+  fallbackRecovered: 0,
 };
 
 /**
@@ -199,6 +200,53 @@ function generateLocalFilename(url) {
 }
 
 /**
+ * Build kandidat URL download.
+ * WordPress sering menyimpan thumbnail seperti `image-300x200.jpg`
+ * padahal file original yang masih ada adalah `image.jpg`.
+ */
+function buildCandidateUrls(url) {
+  const candidates = [];
+  const seen = new Set();
+
+  function addCandidate(candidate) {
+    if (!candidate || seen.has(candidate)) return;
+    seen.add(candidate);
+    candidates.push(candidate);
+  }
+
+  addCandidate(url);
+
+  try {
+    const urlObj = new URL(url);
+    const originalPath = urlObj.pathname;
+    const normalizedPath = originalPath.replace(
+      /-\d{2,4}x\d{2,4}(?=\.(jpg|jpeg|png|gif|webp)$)/i,
+      "",
+    );
+
+    if (normalizedPath !== originalPath) {
+      urlObj.pathname = normalizedPath;
+      addCandidate(urlObj.toString());
+    }
+
+    if (urlObj.protocol === "http:") {
+      const httpsUrl = new URL(urlObj.toString());
+      httpsUrl.protocol = "https:";
+      addCandidate(httpsUrl.toString());
+
+      if (normalizedPath !== originalPath) {
+        httpsUrl.pathname = normalizedPath;
+        addCandidate(httpsUrl.toString());
+      }
+    }
+  } catch (error) {
+    // Biarkan kandidat asli saja bila URL tidak valid.
+  }
+
+  return candidates;
+}
+
+/**
  * Download file dari URL
  */
 function downloadFile(url, destPath) {
@@ -272,17 +320,28 @@ async function processImageUrl(url) {
     return { original: url, local: localUrl, success: true };
   }
 
-  try {
-    console.log(`  [DOWNLOAD] ${url}`);
-    await downloadFile(url, localPath);
-    console.log(`  [OK] Saved to: ${filename}`);
-    stats.imagesDownloaded++;
-    return { original: url, local: localUrl, success: true };
-  } catch (error) {
-    console.log(`  [FAIL] ${url}: ${error.message}`);
-    stats.imagesFailed++;
-    return { original: url, local: null, success: false };
+  const candidates = buildCandidateUrls(url);
+
+  for (let index = 0; index < candidates.length; index++) {
+    const candidate = candidates[index];
+
+    try {
+      console.log(`  [DOWNLOAD] ${candidate}`);
+      await downloadFile(candidate, localPath);
+      if (index > 0) {
+        console.log(`  [FALLBACK] Berhasil pakai URL alternatif`);
+        stats.fallbackRecovered++;
+      }
+      console.log(`  [OK] Saved to: ${filename}`);
+      stats.imagesDownloaded++;
+      return { original: url, local: localUrl, success: true, downloadedFrom: candidate };
+    } catch (error) {
+      console.log(`  [FAIL] ${candidate}: ${error.message}`);
+    }
   }
+
+  stats.imagesFailed++;
+  return { original: url, local: null, success: false };
 }
 
 /**
@@ -426,6 +485,7 @@ async function main() {
     console.log(`Gambar didownload    : ${stats.imagesDownloaded}`);
     console.log(`Gambar di-skip       : ${stats.imagesSkipped}`);
     console.log(`Gambar gagal         : ${stats.imagesFailed}`);
+    console.log(`Fallback berhasil    : ${stats.fallbackRecovered}`);
     console.log(`Posts di-update      : ${stats.urlsUpdated}`);
 
     if (DRY_RUN) {

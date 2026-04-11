@@ -11,7 +11,38 @@ const readline = require("readline");
 const path = require("path");
 const mysql = require("mysql2/promise");
 
-const SQL_FILE = path.join(__dirname, "../../news_db.sql");
+function resolveSqlFile() {
+  const cliArg = process.argv[2];
+  if (cliArg) {
+    const absolutePath = path.isAbsolute(cliArg)
+      ? cliArg
+      : path.resolve(process.cwd(), cliArg);
+    return absolutePath;
+  }
+
+  const projectRoot = path.resolve(__dirname, "../..");
+  const preferredFiles = [
+    "almx6124_wp397.sql",
+    "news_db.sql",
+  ];
+
+  for (const filename of preferredFiles) {
+    const candidate = path.join(projectRoot, filename);
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  const sqlFiles = fs
+    .readdirSync(projectRoot, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".sql"))
+    .map((entry) => path.join(projectRoot, entry.name))
+    .sort();
+
+  return sqlFiles[0] || path.join(projectRoot, "news_db.sql");
+}
+
+const SQL_FILE = resolveSqlFile();
 
 async function createConnection() {
   return await mysql.createConnection({

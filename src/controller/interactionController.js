@@ -1,5 +1,6 @@
 const { PostLike, Comment, Post, User } = require("../schema");
 const { Op } = require("sequelize");
+const { detectGambling } = require("../services/spamDetector.service");
 
 /**
  * Toggle like on a post
@@ -350,6 +351,110 @@ exports.getComments = async (req, res) => {
     });
   } catch (error) {
     console.error("Error getting comments:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Scan semua komentar, HANYA deteksi — tidak ubah status apapun
+ * POST /api/comments/scan-gambling
+ */
+exports.scanGamblingComments = async (req, res) => {
+  try {
+    const comments = await Comment.findAll({
+      where: { status: { [Op.notIn]: ["spam", "trash"] } },
+      attributes: ["id", "content", "author_name", "author_url", "status"],
+    });
+
+    const detected = [];
+
+    for (const comment of comments) {
+      const textToCheck = [
+        comment.content,
+        comment.author_name,
+        comment.author_url || "",
+      ].join(" ");
+
+      const { isSpam, matchedKeywords } = detectGambling(textToCheck);
+
+      if (isSpam) {
+        // HANYA tambahkan ke hasil — tidak ubah status
+        detected.push({
+          id: comment.id,
+          author: comment.author_name,
+          preview: comment.content.substring(0, 120),
+          matchedKeywords,
+        });
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: `Scan selesai. ${detected.length} komentar terdeteksi mengandung konten judi.`,
+      data: { count: detected.length, detected },
+    });
+  } catch (error) {
+    console.error("Error scanning gambling comments:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Tandai komentar sebagai spam berdasarkan daftar ID (setelah admin konfirmasi)
+ * POST /api/comments/mark-spam
+ */
+exports.markAsSpam = async (req, res) => {
+  try {
+    const { ids } = req.body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, message: "ids harus array dan tidak boleh kosong" });
+    }
+
+    const updated = await Comment.update(
+      { status: "spam" },
+      { where: { id: { [Op.in]: ids } } }
+    );
+
+    return res.json({
+      success: true,
+      message: `${updated[0]} komentar berhasil ditandai spam.`,
+      data: { marked: updated[0] },
+    });
+  } catch (error) {
+    console.error("Error marking as spam:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Hapus permanen semua komentar berstatus spam
+ * DELETE /api/comments/spam
+ */
+exports.deleteSpamComments = async (req, res) => {
+  try {
+    const count = await Comment.count({ where: { status: "spam" } });
+    await Comment.destroy({ where: { status: "spam" } });
+
+    return res.json({
+      success: true,
+      message: `${count} komentar spam berhasil dihapus permanen.`,
+      data: { deleted: count },
+    });
+  } catch (error) {
+    console.error("Error deleting spam comments:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",

@@ -1,23 +1,37 @@
 const { Tag } = require("../schema");
+const sequelize = require("../config/database");
+
+// Simple cache (TTL: 5 menit)
+let _tagsCache = null;
+let _tagsCacheTs = 0;
+const TAGS_TTL = 5 * 60 * 1000;
+function clearTagsCache() { _tagsCache = null; _tagsCacheTs = 0; }
 
 // Get all tags
 exports.getAllTags = async (req, res) => {
   try {
-    const tags = await Tag.findAll({
-      order: [["name", "ASC"]],
-    });
+    if (_tagsCache && Date.now() - _tagsCacheTs < TAGS_TTL) {
+      return res.json({ success: true, data: _tagsCache });
+    }
 
-    res.json({
-      success: true,
-      data: tags,
-    });
+    const tags = await sequelize.query(
+      `SELECT t.id, t.name, t.slug, t.description,
+              COUNT(DISTINCT pt.post_id) AS post_count
+       FROM tags t
+       LEFT JOIN post_tags pt ON pt.tag_id = t.id
+       GROUP BY t.id, t.name, t.slug, t.description
+       ORDER BY t.name ASC`,
+      { type: sequelize.QueryTypes.SELECT }
+    );
+
+    const result = tags.map((t) => ({ ...t, post_count: Number(t.post_count) || 0 }));
+    _tagsCache = result;
+    _tagsCacheTs = Date.now();
+
+    res.json({ success: true, data: result });
   } catch (error) {
     console.error("Error getting tags:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error fetching tags",
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: "Error fetching tags", error: error.message });
   }
 };
 
@@ -39,6 +53,7 @@ exports.createTag = async (req, res) => {
       description,
     });
 
+    clearTagsCache();
     res.status(201).json({
       success: true,
       data: tag,
@@ -74,6 +89,7 @@ exports.updateTag = async (req, res) => {
       description: description !== undefined ? description : tag.description,
     });
 
+    clearTagsCache();
     res.json({
       success: true,
       data: tag,
@@ -103,7 +119,7 @@ exports.deleteTag = async (req, res) => {
     }
 
     await tag.destroy();
-
+    clearTagsCache();
     res.json({
       success: true,
       message: "Tag deleted successfully",

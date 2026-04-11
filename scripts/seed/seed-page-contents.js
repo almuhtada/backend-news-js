@@ -1,6 +1,6 @@
-require('dotenv').config({ path: __dirname + '/.env' });
-const sequelize = require('./config/database');
-const PageContent = require('./schema/pageContent');
+require("dotenv").config();
+const sequelize = require("../../config/database");
+const PageContent = require("../../schema/pageContent");
 
 const defaultGriyaQuranContent = {
   header: {

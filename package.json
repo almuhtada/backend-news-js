@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
+    "import:wp": "node scripts/migration/import-wp-sql.js",
     "migrate": "node scripts/migration/migrate-from-wordpress.js",
     "migrate:img": "node scripts/migration/migrate-images-to-local.js",
     "migrate:img:dry": "node scripts/migration/migrate-images-to-local.js --dry-run",
@@ -20,6 +21,9 @@
     "sync:db": "node scripts/maintenance/sync-database.js",
     "fix:img-urls": "node scripts/maintenance/update-featured-image-urls.js",
     "fix:img-urls:dry": "node scripts/maintenance/update-featured-image-urls.js --dry-run",
+    "seed:about": "node scripts/seed/seedAboutDataSimple.js",
+    "seed:page-contents": "node scripts/seed/seed-page-contents.js",
+    "import:profile-pages": "node scripts/migration/import-profile-pages-to-tables.js",
     "test": "jest --runInBand",
     "test:watch": "jest --watch",
     "test:ci": "jest --runInBand --coverage",

@@ -3,34 +3,156 @@ const router = express.Router();
 const interactionController = require("../controller/interactionController");
 
 /**
- * @route   POST /api/posts/:id/like
- * @desc    Toggle like on a post (like/unlike)
- * @access  Public
- * @body    { user_identifier: string (IP or user ID), user_id?: number }
+ * @swagger
+ * /api/posts/{id}/like:
+ *   post:
+ *     summary: Toggle like on a post
+ *     tags: [Interactions]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Post ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [user_identifier]
+ *             properties:
+ *               user_identifier:
+ *                 type: string
+ *                 description: IP address or external user identifier
+ *               user_id:
+ *                 type: integer
+ *                 description: Registered user ID if available
+ *     responses:
+ *       200:
+ *         description: Like toggled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       500:
+ *         description: Server error
  */
 router.post("/:id/like", interactionController.toggleLike);
 
 /**
- * @route   GET /api/posts/:id/likes
- * @desc    Get like count and status for a post
- * @access  Public
- * @query   user_identifier?: string (to check if user has liked)
+ * @swagger
+ * /api/posts/{id}/likes:
+ *   get:
+ *     summary: Get like count and current like status
+ *     tags: [Interactions]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Post ID
+ *       - in: query
+ *         name: user_identifier
+ *         schema:
+ *           type: string
+ *         description: Optional identifier to check whether the user has liked the post
+ *     responses:
+ *       200:
+ *         description: Like information retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       500:
+ *         description: Server error
  */
 router.get("/:id/likes", interactionController.getLikes);
 
 /**
- * @route   POST /api/posts/:id/comments
- * @desc    Create a new comment on a post
- * @access  Public
- * @body    { author_name, author_email, content, author_url?, parent_id?, user_id? }
+ * @swagger
+ * /api/posts/{id}/comments:
+ *   post:
+ *     summary: Create a comment on a post
+ *     tags: [Interactions]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Post ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [author_name, author_email, content]
+ *             properties:
+ *               author_name:
+ *                 type: string
+ *               author_email:
+ *                 type: string
+ *                 format: email
+ *               content:
+ *                 type: string
+ *               author_url:
+ *                 type: string
+ *               parent_id:
+ *                 type: integer
+ *               user_id:
+ *                 type: integer
+ *     responses:
+ *       201:
+ *         description: Comment created successfully
+ *       400:
+ *         description: Invalid request
+ *       500:
+ *         description: Server error
  */
 router.post("/:id/comments", interactionController.createComment);
 
 /**
- * @route   GET /api/posts/:id/comments
- * @desc    Get comments for a post
- * @access  Public
- * @query   status?: 'approved'|'pending'|'spam'|'trash', limit?: number, offset?: number
+ * @swagger
+ * /api/posts/{id}/comments:
+ *   get:
+ *     summary: Get comments for a post
+ *     tags: [Interactions]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Post ID
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [approved, pending, spam, trash]
+ *         description: Filter comments by status
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Maximum number of comments to return
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *         description: Pagination offset
+ *     responses:
+ *       200:
+ *         description: Comments retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       500:
+ *         description: Server error
  */
 router.get("/:id/comments", interactionController.getComments);
 
