@@ -1,4 +1,5 @@
 const express = require("express");
+const { authenticate } = require("../middleware/auth");
 const {
   getAllPageContents,
   getPageContentByKey,
@@ -109,7 +110,7 @@ router.get("/:key", getPageContentByKey);
  *       500:
  *         description: Server error
  */
-router.post("/", upsertPageContent);
+router.post("/", authenticate, upsertPageContent);
 
 /**
  * @swagger
@@ -134,6 +135,6 @@ router.post("/", upsertPageContent);
  *       500:
  *         description: Server error
  */
-router.delete("/:key", deletePageContent);
+router.delete("/:key", authenticate, deletePageContent);
 
 module.exports = router;

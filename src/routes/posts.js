@@ -11,6 +11,7 @@ const {
   getTrendingPosts,
   summarizeText,
 } = require("../controller/postController");
+const { authenticate, authorize } = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -248,15 +249,9 @@ router.get("/id/:id", getPostById);
  */
 router.get("/:slug", getPostBySlug);
 
-// Protected routes (uncomment when auth middleware is ready)
-// const { authenticate, isAdmin } = require("../middleware/auth");
-// router.post("/", authenticate, createPost);
-// router.put("/:id", authenticate, updatePost);
-// router.delete("/:id", authenticate, isAdmin, deletePost);
-
-// Temporary routes without auth (for testing)
-router.post("/", createPost);
-router.put("/:id", updatePost);
-router.delete("/:id", deletePost);
+// Protected routes
+router.post("/", authenticate, createPost);
+router.put("/:id", authenticate, updatePost);
+router.delete("/:id", authenticate, authorize("administrator"), deletePost);
 
 module.exports = router;

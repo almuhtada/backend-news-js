@@ -1,4 +1,5 @@
 const express = require("express");
+const { authenticate } = require("../middleware/auth");
 const {
   getAllTags,
   createTag,
@@ -92,7 +93,7 @@ router.get("/", getAllTags);
  *       500:
  *         description: Server error
  */
-router.post("/", createTag);
+router.post("/", authenticate, createTag);
 
 /**
  * @swagger
@@ -128,7 +129,7 @@ router.post("/", createTag);
  *       500:
  *         description: Server error
  */
-router.put("/:id", updateTag);
+router.put("/:id", authenticate, updateTag);
 
 /**
  * @swagger
@@ -153,6 +154,6 @@ router.put("/:id", updateTag);
  *       500:
  *         description: Server error
  */
-router.delete("/:id", deleteTag);
+router.delete("/:id", authenticate, deleteTag);
 
 module.exports = router;

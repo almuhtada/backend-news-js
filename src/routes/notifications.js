@@ -1,4 +1,5 @@
 const express = require("express");
+const { authenticate } = require("../middleware/auth");
 const router = express.Router();
 const notificationController = require("../controller/notificationController");
 
@@ -66,7 +67,7 @@ const notificationController = require("../controller/notificationController");
  *       500:
  *         description: Server error
  */
-router.get("/", notificationController.getAllNotifications);
+router.get("/", authenticate, notificationController.getAllNotifications);
 
 /**
  * @swagger
@@ -100,7 +101,7 @@ router.get("/", notificationController.getAllNotifications);
  *       500:
  *         description: Server error
  */
-router.get("/stats", notificationController.getNotificationStats);
+router.get("/stats", authenticate, notificationController.getNotificationStats);
 
 /**
  * @swagger
@@ -144,7 +145,7 @@ router.get("/stats", notificationController.getNotificationStats);
  *       500:
  *         description: Server error
  */
-router.post("/", notificationController.createNotification);
+router.post("/", authenticate, notificationController.createNotification);
 
 /**
  * @swagger
@@ -182,7 +183,11 @@ router.post("/", notificationController.createNotification);
  *       500:
  *         description: Server error
  */
-router.put("/:id/status", notificationController.updateNotificationStatus);
+router.put(
+  "/:id/status",
+  authenticate,
+  notificationController.updateNotificationStatus,
+);
 
 /**
  * @swagger
@@ -207,6 +212,6 @@ router.put("/:id/status", notificationController.updateNotificationStatus);
  *       500:
  *         description: Server error
  */
-router.delete("/:id", notificationController.deleteNotification);
+router.delete("/:id", authenticate, notificationController.deleteNotification);
 
 module.exports = router;

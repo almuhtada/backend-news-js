@@ -1,4 +1,5 @@
 const express = require("express");
+const { authenticate } = require("../middleware/auth");
 const router = express.Router();
 const achievementController = require("../controller/achievementController");
 
@@ -114,7 +115,7 @@ router.get("/:id", achievementController.getAchievementById);
  *       500:
  *         description: Server error
  */
-router.post("/", achievementController.createAchievement);
+router.post("/", authenticate, achievementController.createAchievement);
 
 /**
  * @swagger
@@ -155,7 +156,7 @@ router.post("/", achievementController.createAchievement);
  *       500:
  *         description: Server error
  */
-router.put("/:id", achievementController.updateAchievement);
+router.put("/:id", authenticate, achievementController.updateAchievement);
 
 /**
  * @swagger
@@ -180,6 +181,6 @@ router.put("/:id", achievementController.updateAchievement);
  *       500:
  *         description: Server error
  */
-router.delete("/:id", achievementController.deleteAchievement);
+router.delete("/:id", authenticate, achievementController.deleteAchievement);
 
 module.exports = router;

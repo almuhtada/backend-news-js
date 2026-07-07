@@ -1,4 +1,5 @@
 const express = require("express");
+const { authenticate } = require("../middleware/auth");
 const {
   getAllCategories,
   getCategoryBySlug,
@@ -144,7 +145,7 @@ router.get("/:slug/posts", getPostsByCategory);
  *       500:
  *         description: Server error
  */
-router.post("/", createCategory);
+router.post("/", authenticate, createCategory);
 
 /**
  * @swagger
@@ -184,7 +185,7 @@ router.post("/", createCategory);
  *       500:
  *         description: Server error
  */
-router.put("/:id", updateCategory);
+router.put("/:id", authenticate, updateCategory);
 
 /**
  * @swagger
@@ -209,6 +210,6 @@ router.put("/:id", updateCategory);
  *       500:
  *         description: Server error
  */
-router.delete("/:id", deleteCategory);
+router.delete("/:id", authenticate, deleteCategory);
 
 module.exports = router;

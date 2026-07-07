@@ -1,4 +1,5 @@
 const express = require("express");
+const { authenticate } = require("../middleware/auth");
 const router = express.Router();
 const publicationController = require("../controller/publicationController");
 
@@ -119,7 +120,7 @@ router.get("/:id", publicationController.getPublicationById);
  *       500:
  *         description: Server error
  */
-router.post("/", publicationController.createPublication);
+router.post("/", authenticate, publicationController.createPublication);
 
 /**
  * @swagger
@@ -162,7 +163,7 @@ router.post("/", publicationController.createPublication);
  *       500:
  *         description: Server error
  */
-router.put("/:id", publicationController.updatePublication);
+router.put("/:id", authenticate, publicationController.updatePublication);
 
 /**
  * @swagger
@@ -187,6 +188,6 @@ router.put("/:id", publicationController.updatePublication);
  *       500:
  *         description: Server error
  */
-router.delete("/:id", publicationController.deletePublication);
+router.delete("/:id", authenticate, publicationController.deletePublication);
 
 module.exports = router;

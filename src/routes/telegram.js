@@ -1,4 +1,5 @@
 const express = require("express");
+const { authenticate } = require("../middleware/auth");
 const router = express.Router();
 const {
   telegramNotificationController,
@@ -96,6 +97,6 @@ const {
  *                   type: string
  *                   example: Gagal mengirim notifikasi Telegram
  */
-router.post("/tele/:type", telegramNotificationController);
+router.post("/tele/:type", authenticate, telegramNotificationController);
 
 module.exports = router;

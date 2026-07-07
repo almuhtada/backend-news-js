@@ -1,4 +1,5 @@
 const express = require("express");
+const { authenticate } = require("../middleware/auth");
 const router = express.Router();
 const interactionController = require("../controller/interactionController");
 
@@ -36,9 +37,13 @@ const interactionController = require("../controller/interactionController");
  *       500:
  *         description: Server error
  */
-router.get("/", interactionController.getAllComments);
-router.post("/scan-gambling", interactionController.scanGamblingComments);
-router.post("/mark-spam", interactionController.markAsSpam);
-router.delete("/spam", interactionController.deleteSpamComments);
+router.get("/", authenticate, interactionController.getAllComments);
+router.post(
+  "/scan-gambling",
+  authenticate,
+  interactionController.scanGamblingComments,
+);
+router.post("/mark-spam", authenticate, interactionController.markAsSpam);
+router.delete("/spam", authenticate, interactionController.deleteSpamComments);
 
 module.exports = router;

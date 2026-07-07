@@ -23,7 +23,26 @@ const ENV = process.env.NODE_ENV || "development";
    MIDDLEWARE STACK
 ══════════════════════════════════════════════════════════════════════════════ */
 app.use(morgan(ENV === "production" ? "combined" : "dev"));
-app.use(cors());
+
+const allowedOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(",").map((origin) => origin.trim())
+  : ["http://localhost:5174", "http://localhost:3000"];
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("CORS policy: origin not allowed"));
+    },
+  }),
+);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static("uploads"));

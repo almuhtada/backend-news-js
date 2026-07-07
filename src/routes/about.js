@@ -1,4 +1,5 @@
 const express = require("express");
+const { authenticate } = require("../middleware/auth");
 const router = express.Router();
 const aboutController = require("../controller/aboutController");
 
@@ -105,7 +106,7 @@ router.get("/:key", aboutController.getAboutSectionByKey);
  *       500:
  *         description: Server error
  */
-router.post("/", aboutController.upsertAboutSection);
+router.post("/", authenticate, aboutController.upsertAboutSection);
 
 /**
  * @swagger
@@ -130,6 +131,6 @@ router.post("/", aboutController.upsertAboutSection);
  *       500:
  *         description: Server error
  */
-router.delete("/:id", aboutController.deleteAboutSection);
+router.delete("/:id", authenticate, aboutController.deleteAboutSection);
 
 module.exports = router;
