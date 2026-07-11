@@ -10,11 +10,13 @@
  *   const logger                       = require("../utils/logger");
  */
 
-const response   = require("./response");
-const pagination = require("./pagination");
-const slug       = require("./slug");
-const sanitize   = require("./sanitize");
-const logger     = require("./logger");
+const response     = require("./response");
+const pagination   = require("./pagination");
+const slug         = require("./slug");
+const sanitize     = require("./sanitize");
+const logger       = require("./logger");
+const errors       = require("./errors");
+const asyncHandler = require("./asyncHandler");
 
 module.exports = {
   // response helpers
@@ -29,6 +31,13 @@ module.exports = {
   // sanitize helpers
   ...sanitize,
 
-  // logger (akses via require("../utils/logger") atau require("../utils").logger)
+  // logger
   logger,
+
+  // custom HTTP errors
+  ...errors,
+
+  // async handler utility
+  asyncHandler,
 };
+

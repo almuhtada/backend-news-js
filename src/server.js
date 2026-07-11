@@ -26,7 +26,7 @@ app.use(morgan(ENV === "production" ? "combined" : "dev"));
 
 const allowedOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(",").map((origin) => origin.trim())
-  : ["http://localhost:5174", "http://localhost:3000"];
+  : ["http://localhost:5174", "http://localhost:3000", "http://localhost:5173"];
 
 app.use(
   cors({

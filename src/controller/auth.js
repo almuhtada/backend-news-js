@@ -1,94 +1,28 @@
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const User = require("../schema/user");
-const { Op } = require("sequelize");
+const authService = require("../services/auth.service");
+const { ok, created, asyncHandler } = require("../utils");
 
-const register = async (req, res) => {
-  try {
-    const { username, email, password } = req.body;
+/**
+ * Register a new user
+ */
+const register = asyncHandler(async (req, res) => {
+  const result = await authService.register(req.body);
+  return created(res, result, "User registered successfully");
+});
 
-    // Check if user exists
-    const existingUser = await User.findOne({ where: { email } });
-    if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
-    }
+/**
+ * Login user and return JWT token
+ */
+const login = asyncHandler(async (req, res) => {
+  const result = await authService.login(req.body);
+  return ok(res, result, "Login successful");
+});
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create user
-    const user = await User.create({
-      username,
-      email,
-      password: hashedPassword,
-    });
-
-    res.status(201).json({
-      message: "User registered successfully",
-      user: { id: user.id, username: user.username, email: user.email },
-    });
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
-
-const login = async (req, res, next) => {
-  try {
-    const { identifier, password } = req.body;
-
-    const user = await User.findOne({
-      where: { [Op.or]: [{ email: identifier }, { username: identifier }] },
-    });
-    if (!user) {
-      return res.status(400).json({ message: "Invalid credentials" });
-    }
-
-    // Check password
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Invalid credentials" });
-    }
-
-    // Generate token
-    const token = jwt.sign(
-      {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        role: user.role,
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" },
-    );
-
-    res.json({
-      message: "Login successful",
-      token,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-const profile = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const user = await User.findByPk(userId, {
-      attributes: ["id", "username", "email", "role"],
-    });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-    res.json({ user });
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
+/**
+ * Get the current user's profile
+ */
+const profile = asyncHandler(async (req, res) => {
+  const user = await authService.getProfile(req.user.id);
+  return ok(res, { user }, "User profile retrieved successfully");
+});
 
 module.exports = { register, login, profile };

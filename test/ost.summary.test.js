@@ -5,6 +5,15 @@ jest.mock("../src/services/summarizer.service", () => ({
   }),
 }));
 
+// 🔥 MOCK AUTH MIDDLEWARE
+jest.mock("../src/middleware/auth", () => ({
+  authenticate: (req, res, next) => {
+    req.user = { id: 1, username: "admin_test", role: "administrator" };
+    next();
+  },
+  authorize: () => (req, res, next) => next(),
+}));
+
 const request = require("supertest");
 const app = require("../app");
 

@@ -25,7 +25,7 @@ const serverError = (res, error, message = "Internal server error") => {
   });
 };
 
-const paginated = (res, rows, count, page, limit) =>
+const paginated = (res, rows, count, page, limit, extra = {}) =>
   res.json({
     success: true,
     data: rows,
@@ -35,6 +35,7 @@ const paginated = (res, rows, count, page, limit) =>
       limit: parseInt(limit, 10),
       totalPages: Math.ceil(count / limit),
     },
+    ...extra,
   });
 
 module.exports = {
