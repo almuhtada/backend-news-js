@@ -1,5 +1,5 @@
 const express = require("express");
-const { authenticate } = require("../middleware/auth");
+const { authenticate, authorize } = require("../middleware/auth");
 const {
   getUsers,
   getUser,
@@ -71,7 +71,7 @@ const router = express.Router();
  *       500:
  *         description: Server error
  */
-router.get("/", authenticate, getUsers);
+router.get("/", authenticate, authorize("administrator"), getUsers);
 
 /**
  * @swagger
@@ -105,7 +105,7 @@ router.get("/", authenticate, getUsers);
  *       500:
  *         description: Server error
  */
-router.get("/:id", authenticate, getUser);
+router.get("/:id", authenticate, authorize("administrator"), getUser);
 
 /**
  * @swagger
@@ -169,7 +169,7 @@ router.get("/:id", authenticate, getUser);
  *       500:
  *         description: Server error
  */
-router.post("/", authenticate, createUser);
+router.post("/", authenticate, authorize("administrator"), createUser);
 
 /**
  * @swagger
@@ -227,7 +227,7 @@ router.post("/", authenticate, createUser);
  *       500:
  *         description: Server error
  */
-router.put("/:id", authenticate, updateUser);
+router.put("/:id", authenticate, authorize("administrator"), updateUser);
 
 /**
  * @swagger
@@ -259,6 +259,6 @@ router.put("/:id", authenticate, updateUser);
  *       500:
  *         description: Server error
  */
-router.delete("/:id", authenticate, deleteUser);
+router.delete("/:id", authenticate, authorize("administrator"), deleteUser);
 
 module.exports = router;

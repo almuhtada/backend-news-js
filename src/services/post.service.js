@@ -4,6 +4,7 @@ const { generateSummary } = require("./summarizer.service");
 const { sendTelegramMessage } = require("./telegram.service");
 const { NotFoundError, BadRequestError } = require("../utils");
 const { parsePagination } = require("../utils");
+const recommendationService = require("./recommendation.service");
 
 class PostService {
   /**
@@ -128,9 +129,10 @@ class PostService {
   /**
    * Get single post by slug (and increment views)
    * @param {string} slug
+   * @param {object} options - { userIdentifier, userId } untuk track view log
    * @returns {Promise<Post>}
    */
-  async getPostBySlug(slug) {
+  async getPostBySlug(slug, options = {}) {
     const post = await Post.findOne({
       where: { slug, status: "publish" },
       include: [
@@ -164,8 +166,20 @@ class PostService {
       throw new NotFoundError("Post not found");
     }
 
-    // Increment views
+    // Increment aggregate views counter
     await post.increment("views");
+
+    // Track granular view log secara async (fire-and-forget)
+    // Tidak blocking — error diabaikan agar tidak ganggu response
+    if (options.userIdentifier) {
+      recommendationService
+        .trackView({
+          postId: post.id,
+          userIdentifier: options.userIdentifier,
+          userId: options.userId || null,
+        })
+        .catch(() => {});
+    }
 
     return post;
   }

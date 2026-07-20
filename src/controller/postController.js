@@ -32,7 +32,15 @@ exports.getPostById = asyncHandler(async (req, res) => {
  */
 exports.getPostBySlug = asyncHandler(async (req, res) => {
   const { slug } = req.params;
-  const post = await postService.getPostBySlug(slug);
+  // Kirim user identifier agar view log bisa di-track
+  const userIdentifier =
+    req.headers["x-user-identifier"] ||
+    req.ip ||
+    req.connection?.remoteAddress ||
+    "anonymous";
+  const userId = req.user?.id || null;
+
+  const post = await postService.getPostBySlug(slug, { userIdentifier, userId });
   return ok(res, post, "Post retrieved successfully");
 });
 

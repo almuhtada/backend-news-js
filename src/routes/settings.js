@@ -1,5 +1,5 @@
 const express = require("express");
-const { authenticate } = require("../middleware/auth");
+const { authenticate, authorize } = require("../middleware/auth");
 const {
   getAllSettings,
   getSettingByKey,
@@ -34,7 +34,7 @@ router.get("/", getAllSettings);
  *       200:
  *         description: Settings initialized
  */
-router.post("/initialize", initializeSettings);
+router.post("/initialize", authenticate, authorize("administrator"), initializeSettings);
 
 /**
  * @swagger
@@ -75,7 +75,7 @@ router.post("/initialize", initializeSettings);
  *       200:
  *         description: Settings saved successfully
  */
-router.post("/save", authenticate, saveAllSettings);
+router.post("/save", authenticate, authorize("administrator"), saveAllSettings);
 
 /**
  * @swagger
@@ -107,7 +107,7 @@ router.post("/save", authenticate, saveAllSettings);
  *       200:
  *         description: Settings updated successfully
  */
-router.put("/bulk", authenticate, bulkUpdateSettings);
+router.put("/bulk", authenticate, authorize("administrator"), bulkUpdateSettings);
 
 /**
  * @swagger
@@ -179,6 +179,6 @@ router.get("/:key", getSettingByKey);
  *       200:
  *         description: Setting updated successfully
  */
-router.put("/:key", authenticate, updateSetting);
+router.put("/:key", authenticate, authorize("administrator"), updateSetting);
 
 module.exports = router;

@@ -1,6 +1,7 @@
 const express = require("express");
 const { register, login, profile } = require("../controller/auth");
 const { authenticate } = require("../middleware/auth");
+const { authRateLimiter } = require("../middleware/rateLimiter");
 
 const router = express.Router();
 
@@ -56,7 +57,7 @@ const router = express.Router();
  *       500:
  *         description: Server error
  */
-router.post("/register", register);
+router.post("/register", authRateLimiter, register);
 
 /**
  * @swagger
@@ -110,7 +111,7 @@ router.post("/register", register);
  *       500:
  *         description: Server error
  */
-router.post("/login", login);
+router.post("/login", authRateLimiter, login);
 
 /**
  * @swagger

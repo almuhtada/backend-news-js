@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
 const swaggerUi = require("swagger-ui-express");
+const helmet = require("helmet");
 require("dotenv").config();
 
 const sequelize = require("./config/database");
@@ -22,6 +23,14 @@ const ENV = process.env.NODE_ENV || "development";
 /* ══════════════════════════════════════════════════════════════════════════════
    MIDDLEWARE STACK
 ══════════════════════════════════════════════════════════════════════════════ */
+// Security Headers
+app.use(
+  helmet({
+    contentSecurityPolicy: false, // Disabled for compatibility with Swagger UI
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
+
 app.use(morgan(ENV === "production" ? "combined" : "dev"));
 
 const allowedOrigins = process.env.CORS_ORIGINS

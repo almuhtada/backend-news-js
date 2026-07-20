@@ -15,6 +15,9 @@ const Notification = require("./notification");
 const PageContent = require("./pageContent");
 const PostLike = require("./postLike");
 const Setting = require("./setting");
+// Recommendation system models
+const PostViewLog = require("./postViewLog");
+const UserBookmark = require("./userBookmark");
 
 // ========================================
 // Define Relationships
@@ -111,6 +114,18 @@ Comment.belongsTo(Comment, { foreignKey: "parent_id", as: "parent" });
 Notification.belongsTo(Post, { foreignKey: "post_id", as: "post" });
 Post.hasMany(Notification, { foreignKey: "post_id", as: "notifications" });
 
+// ----- PostViewLog Relationships -----
+Post.hasMany(PostViewLog, { foreignKey: "post_id", as: "viewLogs" });
+PostViewLog.belongsTo(Post, { foreignKey: "post_id", as: "post" });
+User.hasMany(PostViewLog, { foreignKey: "user_id", as: "viewLogs" });
+PostViewLog.belongsTo(User, { foreignKey: "user_id", as: "user" });
+
+// ----- UserBookmark Relationships -----
+User.hasMany(UserBookmark, { foreignKey: "user_id", as: "bookmarks" });
+UserBookmark.belongsTo(User, { foreignKey: "user_id", as: "user" });
+Post.hasMany(UserBookmark, { foreignKey: "post_id", as: "bookmarks" });
+UserBookmark.belongsTo(Post, { foreignKey: "post_id", as: "post" });
+
 // ========================================
 // Export all models
 // ========================================
@@ -132,4 +147,6 @@ module.exports = {
   PageContent,
   PostLike,
   Setting,
+  PostViewLog,
+  UserBookmark,
 };

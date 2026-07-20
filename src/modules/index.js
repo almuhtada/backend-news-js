@@ -16,5 +16,6 @@ module.exports = [
   require('./comments'),
   require('./stats'),
   require('./settings'),
+  require('./recommendations'),
 ];
 
