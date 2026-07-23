@@ -42,7 +42,7 @@ const getAllAchievements = async (req, res) => {
 const getAchievementById = async (req, res) => {
   try {
     const { id } = req.params;
-    const achievement = await Achievement.findByPk(id);
+    const achievement = await Achievement.findOne({ where: { uuid: id } });
 
     if (!achievement) {
       return res.status(404).json({
@@ -104,7 +104,7 @@ const updateAchievement = async (req, res) => {
     const { id } = req.params;
     const { title, name, years } = req.body;
 
-    const achievement = await Achievement.findByPk(id);
+    const achievement = await Achievement.findOne({ where: { uuid: id } });
 
     if (!achievement) {
       return res.status(404).json({
@@ -139,7 +139,7 @@ const deleteAchievement = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const achievement = await Achievement.findByPk(id);
+    const achievement = await Achievement.findOne({ where: { uuid: id } });
 
     if (!achievement) {
       return res.status(404).json({

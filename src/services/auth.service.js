@@ -1,8 +1,19 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { v4: uuidv4 } = require("uuid");
 const User = require("../schema/user");
+const RefreshToken = require("../schema/refreshToken");
+const sequelize = require("../config/database");
 const { Op } = require("sequelize");
 const { BadRequestError, NotFoundError } = require("../utils");
+
+const REFRESH_TOKEN_EXPIRY_MS =
+  (parseInt(process.env.REFRESH_TOKEN_EXPIRY_DAYS, 10) || 7) *
+  24 *
+  60 *
+  60 *
+  1000;
+const ACCESS_TOKEN_EXPIRY = process.env.ACCESS_TOKEN_EXPIRY || "1h";
 
 class AuthService {
   /**
@@ -75,11 +86,19 @@ class AuthService {
         role: user.role,
       },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" },
+      { expiresIn: ACCESS_TOKEN_EXPIRY },
     );
+
+    const refreshTokenValue = uuidv4();
+    await RefreshToken.create({
+      token: refreshTokenValue,
+      user_id: user.id,
+      expires_at: new Date(Date.now() + REFRESH_TOKEN_EXPIRY_MS),
+    });
 
     return {
       token,
+      refreshToken: refreshTokenValue,
       user: {
         id: user.id,
         username: user.username,
@@ -102,6 +121,73 @@ class AuthService {
       throw new NotFoundError("User not found");
     }
     return user;
+  }
+
+  async refreshAccessToken(refreshTokenValue) {
+    if (!refreshTokenValue) {
+      throw new BadRequestError("Refresh token is required");
+    }
+
+    const stored = await RefreshToken.findOne({
+      where: { token: refreshTokenValue, revoked: false },
+    });
+
+    if (!stored) {
+      throw new BadRequestError("Invalid refresh token");
+    }
+
+    if (new Date() > new Date(stored.expires_at)) {
+      await stored.update({ revoked: true });
+      throw new BadRequestError("Refresh token expired");
+    }
+
+    const user = await User.findByPk(stored.user_id);
+    if (!user) {
+      throw new NotFoundError("User not found");
+    }
+
+    const newAccessToken = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: ACCESS_TOKEN_EXPIRY },
+    );
+
+    const newRefreshTokenValue = uuidv4();
+    await stored.update({ revoked: true });
+    await RefreshToken.create({
+      token: newRefreshTokenValue,
+      user_id: user.id,
+      expires_at: new Date(Date.now() + REFRESH_TOKEN_EXPIRY_MS),
+    });
+
+    return {
+      token: newAccessToken,
+      refreshToken: newRefreshTokenValue,
+    };
+  }
+
+  async revokeAllUserTokens(userId) {
+    await RefreshToken.update(
+      { revoked: true },
+      { where: { user_id: userId, revoked: false } },
+    );
+  }
+
+  async cleanupExpiredTokens() {
+    const deleted = await RefreshToken.destroy({
+      where: {
+        [Op.or]: [
+          { expires_at: { [Op.lt]: new Date() } },
+          { revoked: true },
+        ],
+      },
+    });
+    return deleted;
   }
 }
 

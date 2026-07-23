@@ -126,7 +126,7 @@ class CategoryService {
   async updateCategory(id, data) {
     const { name, slug, description, parent_id } = data;
 
-    const category = await Category.findByPk(id);
+    const category = await Category.findOne({ where: { uuid: id } });
     if (!category) {
       throw new NotFoundError("Category not found");
     }
@@ -149,7 +149,7 @@ class CategoryService {
    * @returns {Promise<boolean>}
    */
   async deleteCategory(id) {
-    const category = await Category.findByPk(id);
+    const category = await Category.findOne({ where: { uuid: id } });
     if (!category) {
       throw new NotFoundError("Category not found");
     }

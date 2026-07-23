@@ -7,6 +7,12 @@ const Setting = sequelize.define('Setting', {
     primaryKey: true,
     autoIncrement: true
   },
+  uuid: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    unique: true,
+    allowNull: false,
+  },
   key: {
     type: DataTypes.STRING(100),
     allowNull: false,

@@ -1,5 +1,5 @@
 const express = require("express");
-const { register, login, profile } = require("../controller/auth");
+const { register, login, profile, refreshToken } = require("../controller/auth");
 const { authenticate } = require("../middleware/auth");
 const { authRateLimiter } = require("../middleware/rateLimiter");
 
@@ -146,5 +146,30 @@ router.post("/login", authRateLimiter, login);
  *         description: User not found
  */
 router.get("/me", authenticate, profile);
+
+/**
+ * @swagger
+ * /api/auth/refresh-token:
+ *   post:
+ *     summary: Refresh access token
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - refreshToken
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Token refreshed successfully
+ *       400:
+ *         description: Invalid or expired refresh token
+ */
+router.post("/refresh-token", refreshToken);
 
 module.exports = router;

@@ -9,6 +9,12 @@ const Post = sequelize.define(
       primaryKey: true,
       autoIncrement: true,
     },
+    uuid: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      unique: true,
+      allowNull: false,
+    },
     title: {
       type: DataTypes.STRING(500),
       allowNull: false,

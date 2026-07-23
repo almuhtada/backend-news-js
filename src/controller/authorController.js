@@ -8,12 +8,12 @@ const getAuthorPosts = async (req, res) => {
     const { page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
 
-    // Find user by username or ID
+    // Find user by username or UUID
     const user = await User.findOne({
       where: {
         [Op.or]: [
           { username: username },
-          { id: username }
+          { uuid: username }
         ]
       },
       attributes: ['id', 'username', 'email', 'display_name', 'first_name', 'last_name', 'role', 'user_url', 'createdAt']

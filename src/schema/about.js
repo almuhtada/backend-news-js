@@ -7,6 +7,12 @@ const About = sequelize.define('About', {
     primaryKey: true,
     autoIncrement: true
   },
+  uuid: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    unique: true,
+    allowNull: false,
+  },
   section_key: {
     type: DataTypes.STRING(50),
     allowNull: false,

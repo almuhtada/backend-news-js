@@ -97,7 +97,7 @@ class PostService {
    * @returns {Promise<Post>}
    */
   async getPostById(id) {
-    const post = await Post.findByPk(id, {
+    const post = await Post.findOne({ where: { uuid: id } }, {
       include: [
         {
           model: User,
@@ -123,6 +123,7 @@ class PostService {
       throw new NotFoundError("Post not found");
     }
 
+    await post.increment("views");
     return post;
   }
 
@@ -328,7 +329,7 @@ class PostService {
       tag_ids,
     } = data;
 
-    const post = await Post.findByPk(id);
+    const post = await Post.findOne({ where: { uuid: id } });
     if (!post) {
       throw new NotFoundError("Post not found");
     }
@@ -389,7 +390,7 @@ class PostService {
    * @returns {Promise<boolean>}
    */
   async deletePost(id) {
-    const post = await Post.findByPk(id);
+    const post = await Post.findOne({ where: { uuid: id } });
     if (!post) {
       throw new NotFoundError("Post not found");
     }

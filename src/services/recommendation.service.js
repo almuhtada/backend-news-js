@@ -69,12 +69,15 @@ class RecommendationService {
   ───────────────────────────────────────────────────────────────────── */
   async trackView({ postId, userIdentifier, userId = null }) {
     try {
-      await PostViewLog.create({
-        post_id: postId,
-        user_identifier: userIdentifier,
-        user_id: userId || null,
-        viewed_at: new Date(),
-      });
+      await Promise.all([
+        Post.increment("views", { where: { id: postId } }),
+        PostViewLog.create({
+          post_id: postId,
+          user_identifier: userIdentifier,
+          user_id: userId || null,
+          viewed_at: new Date(),
+        }),
+      ]);
     } catch {
       // Silent fail — view log tidak boleh ganggu response utama
     }

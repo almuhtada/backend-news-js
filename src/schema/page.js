@@ -9,6 +9,12 @@ const Page = sequelize.define(
       primaryKey: true,
       autoIncrement: true,
     },
+    uuid: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      unique: true,
+      allowNull: false,
+    },
     wp_page_id: {
       type: DataTypes.BIGINT,
       allowNull: true,

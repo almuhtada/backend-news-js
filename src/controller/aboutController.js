@@ -93,7 +93,7 @@ const deleteAboutSection = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const section = await About.findByPk(id);
+    const section = await About.findOne({ where: { uuid: id } });
 
     if (!section) {
       return res.status(404).json({

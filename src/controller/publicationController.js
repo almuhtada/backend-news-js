@@ -43,7 +43,7 @@ const getAllPublications = async (req, res) => {
 const getPublicationById = async (req, res) => {
   try {
     const { id } = req.params;
-    const publication = await Publication.findByPk(id);
+    const publication = await Publication.findOne({ where: { uuid: id } });
 
     if (!publication) {
       return res.status(404).json({
@@ -107,7 +107,7 @@ const updatePublication = async (req, res) => {
     const { id } = req.params;
     const { title, authors, year, journal, link } = req.body;
 
-    const publication = await Publication.findByPk(id);
+    const publication = await Publication.findOne({ where: { uuid: id } });
 
     if (!publication) {
       return res.status(404).json({
@@ -144,7 +144,7 @@ const deletePublication = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const publication = await Publication.findByPk(id);
+    const publication = await Publication.findOne({ where: { uuid: id } });
 
     if (!publication) {
       return res.status(404).json({

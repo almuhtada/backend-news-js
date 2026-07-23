@@ -25,4 +25,9 @@ const profile = asyncHandler(async (req, res) => {
   return ok(res, { user }, "User profile retrieved successfully");
 });
 
-module.exports = { register, login, profile };
+const refreshToken = asyncHandler(async (req, res) => {
+  const result = await authService.refreshAccessToken(req.body.refreshToken);
+  return ok(res, result, "Token refreshed successfully");
+});
+
+module.exports = { register, login, profile, refreshToken };

@@ -9,6 +9,12 @@ const Notification = sequelize.define(
       primaryKey: true,
       autoIncrement: true,
     },
+    uuid: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      unique: true,
+      allowNull: false,
+    },
     user_name: {
       type: DataTypes.STRING(255),
       allowNull: false,

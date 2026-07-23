@@ -74,7 +74,7 @@ exports.updateTag = async (req, res) => {
     const { id } = req.params;
     const { name, slug, description } = req.body;
 
-    const tag = await Tag.findByPk(id);
+    const tag = await Tag.findOne({ where: { uuid: id } });
 
     if (!tag) {
       return res.status(404).json({
@@ -109,7 +109,7 @@ exports.deleteTag = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const tag = await Tag.findByPk(id);
+    const tag = await Tag.findOne({ where: { uuid: id } });
 
     if (!tag) {
       return res.status(404).json({

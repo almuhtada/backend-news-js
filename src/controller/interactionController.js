@@ -8,7 +8,7 @@ const { detectGambling } = require("../services/spamDetector.service");
  */
 exports.toggleLike = async (req, res) => {
   try {
-    const { id: postId } = req.params;
+    const { id: postUuid } = req.params;
     const { user_identifier, user_id } = req.body;
 
     if (!user_identifier) {
@@ -19,13 +19,15 @@ exports.toggleLike = async (req, res) => {
     }
 
     // Check if post exists
-    const post = await Post.findByPk(postId);
+    const post = await Post.findOne({ where: { uuid: postUuid } });
     if (!post) {
       return res.status(404).json({
         success: false,
         message: "Post not found",
       });
     }
+
+    const postId = post.id;
 
     // Check if user has already liked this post
     const existingLike = await PostLike.findOne({
@@ -36,10 +38,8 @@ exports.toggleLike = async (req, res) => {
     });
 
     if (existingLike) {
-      // Unlike: delete the like
       await existingLike.destroy();
 
-      // Get updated like count
       const likeCount = await PostLike.count({
         where: { post_id: postId },
       });
@@ -53,14 +53,12 @@ exports.toggleLike = async (req, res) => {
         },
       });
     } else {
-      // Like: create new like
       await PostLike.create({
         post_id: postId,
         user_identifier,
         user_id: user_id || null,
       });
 
-      // Get updated like count
       const likeCount = await PostLike.count({
         where: { post_id: postId },
       });
@@ -90,17 +88,19 @@ exports.toggleLike = async (req, res) => {
  */
 exports.getLikes = async (req, res) => {
   try {
-    const { id: postId } = req.params;
+    const { id: postUuid } = req.params;
     const { user_identifier } = req.query;
 
     // Check if post exists
-    const post = await Post.findByPk(postId);
+    const post = await Post.findOne({ where: { uuid: postUuid } });
     if (!post) {
       return res.status(404).json({
         success: false,
         message: "Post not found",
       });
     }
+
+    const postId = post.id;
 
     // Get like count
     const likeCount = await PostLike.count({
@@ -142,7 +142,7 @@ exports.getLikes = async (req, res) => {
  */
 exports.createComment = async (req, res) => {
   try {
-    const { id: postId } = req.params;
+    const { id: postUuid } = req.params;
     const {
       author_name,
       author_email,
@@ -163,13 +163,15 @@ exports.createComment = async (req, res) => {
     }
 
     // Check if post exists
-    const post = await Post.findByPk(postId);
+    const post = await Post.findOne({ where: { uuid: postUuid } });
     if (!post) {
       return res.status(404).json({
         success: false,
         message: "Post not found",
       });
     }
+
+    const postId = post.id;
 
     // If parent_id provided, check if parent comment exists
     if (parent_id) {
@@ -283,17 +285,19 @@ exports.getAllComments = async (req, res) => {
  */
 exports.getComments = async (req, res) => {
   try {
-    const { id: postId } = req.params;
+    const { id: postUuid } = req.params;
     const { status = "approved", limit = 50, offset = 0 } = req.query;
 
     // Check if post exists
-    const post = await Post.findByPk(postId);
+    const post = await Post.findOne({ where: { uuid: postUuid } });
     if (!post) {
       return res.status(404).json({
         success: false,
         message: "Post not found",
       });
     }
+
+    const postId = post.id;
 
     // Build where clause
     const whereClause = {

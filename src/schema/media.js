@@ -9,6 +9,12 @@ const Media = sequelize.define(
       primaryKey: true,
       autoIncrement: true,
     },
+    uuid: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      unique: true,
+      allowNull: false,
+    },
     wp_attachment_id: {
       type: DataTypes.BIGINT,
       allowNull: true,

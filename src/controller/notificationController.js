@@ -121,9 +121,9 @@ exports.createNotification = async (req, res) => {
 exports.updateNotificationStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, post_status, rejection_reason } = req.body; // status: approved/rejected, post_status: publish/archived, rejection_reason: alasan penolakan
+    const { status, post_status, rejection_reason } = req.body;
 
-    const notification = await Notification.findByPk(id);
+    const notification = await Notification.findOne({ where: { uuid: id } });
 
     if (!notification) {
       return res.status(404).json({
@@ -156,7 +156,8 @@ exports.updateNotificationStatus = async (req, res) => {
       if (post) {
         await post.update({
           status: "draft", // Keep as draft so author can edit and resubmit
-          rejection_reason: rejection_reason || "Tidak ada alasan yang diberikan",
+          rejection_reason:
+            rejection_reason || "Tidak ada alasan yang diberikan",
         });
       }
     }
@@ -168,12 +169,13 @@ exports.updateNotificationStatus = async (req, res) => {
       await sendTelegramMessage({
         topic: "EDITOR",
         useHtml: true,
-        text: `🟢 <b>Berita Disetujui &amp; Dipublikasikan</b>\n\n` +
-              `📌 <b>Judul:</b> ${post?.title}\n` +
-              `✍️ <b>Penulis:</b> ${author?.username || "Unknown"}\n` +
-              `🛡️ <b>Editor:</b> ${editorName}\n` +
-              `⏰ <b>Waktu:</b> ${new Date().toLocaleString("id-ID")}\n\n` +
-              `🔗 <a href="${frontendUrl}/detail-news/${post?.slug}"><b>Lihat Lengkap</b></a>`
+        text:
+          `🟢 <b>Berita Disetujui &amp; Dipublikasikan</b>\n\n` +
+          `📌 <b>Judul:</b> ${post?.title}\n` +
+          `✍️ <b>Penulis:</b> ${author?.username || "Unknown"}\n` +
+          `🛡️ <b>Editor:</b> ${editorName}\n` +
+          `⏰ <b>Waktu:</b> ${new Date().toLocaleString("id-ID")}\n\n` +
+          `🔗 <a href="${frontendUrl}/detail-news/${post?.slug}"><b>Lihat Lengkap</b></a>`,
       });
     }
 
@@ -181,18 +183,20 @@ exports.updateNotificationStatus = async (req, res) => {
       await sendTelegramMessage({
         topic: "EDITOR",
         useHtml: true,
-        text: `🔴 <b>Berita Ditolak oleh Editor</b>\n\n` +
-              `📌 <b>Judul:</b> ${post?.title}\n` +
-              `✍️ <b>Penulis:</b> ${author?.username || "Unknown"}\n` +
-              `🛡️ <b>Editor:</b> ${editorName}\n` +
-              `⏰ <b>Waktu:</b> ${new Date().toLocaleString("id-ID")}\n\n` +
-              `❌ <b>Alasan Penolakan:</b>\n` +
-              `<i>"${rejection_reason || "Tidak ada alasan yang diberikan"}"</i>\n\n` +
-              `💡 <i>Silakan perbaiki berita Anda melalui dashboard penulis untuk dikirim kembali.</i>`
+        text:
+          `🔴 <b>Berita Ditolak oleh Editor</b>\n\n` +
+          `📌 <b>Judul:</b> ${post?.title}\n` +
+          `✍️ <b>Penulis:</b> ${author?.username || "Unknown"}\n` +
+          `🛡️ <b>Editor:</b> ${editorName}\n` +
+          `⏰ <b>Waktu:</b> ${new Date().toLocaleString("id-ID")}\n\n` +
+          `❌ <b>Alasan Penolakan:</b>\n` +
+          `<i>"${rejection_reason || "Tidak ada alasan yang diberikan"}"</i>\n\n` +
+          `💡 <i>Silakan perbaiki berita Anda melalui dashboard penulis untuk dikirim kembali.</i>`,
       });
     }
     // Fetch updated notification with post
-    const updatedNotification = await Notification.findByPk(id, {
+    const updatedNotification = await Notification.findOne({
+      where: { uuid: id },
       include: [
         {
           model: Post,
@@ -221,7 +225,7 @@ exports.deleteNotification = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const notification = await Notification.findByPk(id);
+    const notification = await Notification.findOne({ where: { uuid: id } });
 
     if (!notification) {
       return res.status(404).json({

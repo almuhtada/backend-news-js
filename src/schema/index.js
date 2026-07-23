@@ -18,6 +18,7 @@ const Setting = require("./setting");
 // Recommendation system models
 const PostViewLog = require("./postViewLog");
 const UserBookmark = require("./userBookmark");
+const RefreshToken = require("./refreshToken");
 
 // ========================================
 // Define Relationships
@@ -126,6 +127,10 @@ UserBookmark.belongsTo(User, { foreignKey: "user_id", as: "user" });
 Post.hasMany(UserBookmark, { foreignKey: "post_id", as: "bookmarks" });
 UserBookmark.belongsTo(Post, { foreignKey: "post_id", as: "post" });
 
+// ----- RefreshToken Relationships -----
+User.hasMany(RefreshToken, { foreignKey: "user_id", as: "refreshTokens" });
+RefreshToken.belongsTo(User, { foreignKey: "user_id", as: "user" });
+
 // ========================================
 // Export all models
 // ========================================
@@ -149,4 +154,5 @@ module.exports = {
   Setting,
   PostViewLog,
   UserBookmark,
+  RefreshToken,
 };

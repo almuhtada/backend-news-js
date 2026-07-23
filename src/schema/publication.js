@@ -7,6 +7,12 @@ const Publication = sequelize.define('Publication', {
     primaryKey: true,
     autoIncrement: true
   },
+  uuid: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    unique: true,
+    allowNull: false,
+  },
   title: {
     type: DataTypes.STRING,
     allowNull: false,

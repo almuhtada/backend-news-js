@@ -1,4 +1,5 @@
 const User = require("../schema/user");
+const authService = require("../services/auth.service");
 const { Op } = require("sequelize");
 const {
   ok,
@@ -55,7 +56,7 @@ const getUsers = async (req, res) => {
 const getUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const user = await User.findByPk(id);
+    const user = await User.findOne({ where: { uuid: id } });
 
     if (!user) {
       return notFound(res, "User not found");
@@ -69,12 +70,7 @@ const getUser = async (req, res) => {
 
 const createUser = async (req, res) => {
   try {
-    const {
-      username,
-      email,
-      password,
-      role,
-    } = req.body;
+    const { username, email, password, role } = req.body;
 
     // Check if user exists
     const existingUser = await User.findOne({ where: { email } });
@@ -85,8 +81,6 @@ const createUser = async (req, res) => {
     // Hash password
     const bcrypt = require("bcryptjs");
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create user - display_name defaults to username
     const user = await User.create({
       username,
       email,
@@ -110,7 +104,7 @@ const updateUser = async (req, res) => {
     const { id } = req.params;
     const { email, role, password } = req.body;
 
-    const user = await User.findByPk(id);
+    const user = await User.findOne({ where: { uuid: id } });
     if (!user) {
       return notFound(res, "User not found");
     }
@@ -130,6 +124,11 @@ const updateUser = async (req, res) => {
     // Update user
     await user.update(updateData);
 
+    // Revoke all refresh tokens if password changed
+    if (password && password.trim()) {
+      await authService.revokeAllUserTokens(id);
+    }
+
     // Remove password from response
     const userResponse = { ...user.toJSON() };
     delete userResponse.password;
@@ -143,7 +142,7 @@ const updateUser = async (req, res) => {
 const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const user = await User.findByPk(id);
+    const user = await User.findOne({ where: { uuid: id } });
 
     if (!user) {
       return notFound(res, "User not found");

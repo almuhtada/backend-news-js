@@ -1,5 +1,6 @@
 const recommendationService = require("../services/recommendation.service");
-const { ok, asyncHandler } = require("../utils");
+const { Post, Category } = require("../schema");
+const { ok, asyncHandler, NotFoundError } = require("../utils");
 
 /* ═══════════════════════════════════════════════════════════════════════════
    HELPER — Ekstrak user_identifier dari request
@@ -26,8 +27,11 @@ exports.getRelatedPosts = asyncHandler(async (req, res) => {
   const { postId } = req.params;
   const { limit = 6 } = req.query;
 
+  const post = await Post.findOne({ where: { uuid: postId } });
+  if (!post) throw new NotFoundError("Post not found");
+
   const posts = await recommendationService.getRelatedPosts({
-    postId: parseInt(postId),
+    postId: post.id,
     limit,
   });
 
@@ -61,8 +65,11 @@ exports.getTrendingByCategory = asyncHandler(async (req, res) => {
   const { categoryId } = req.params;
   const { limit = 5, hours = 48, excludePostId } = req.query;
 
+  const category = await Category.findOne({ where: { uuid: categoryId } });
+  if (!category) throw new NotFoundError("Category not found");
+
   const posts = await recommendationService.getTrendingByCategory({
-    categoryId: parseInt(categoryId),
+    categoryId: category.id,
     excludePostId: excludePostId ? parseInt(excludePostId) : null,
     limit,
     hours,
@@ -93,10 +100,12 @@ exports.trackView = asyncHandler(async (req, res) => {
   const userId = req.user?.id || null;
 
   if (postId) {
-    // Non-blocking — tidak await supaya response langsung balik
-    recommendationService
-      .trackView({ postId: parseInt(postId), userIdentifier, userId })
-      .catch(() => {}); // silent fail
+    const post = await Post.findOne({ where: { uuid: postId }, attributes: ["id"] });
+    if (post) {
+      recommendationService
+        .trackView({ postId: post.id, userIdentifier, userId })
+        .catch(() => {});
+    }
   }
 
   return ok(res, null, "View tracked");
@@ -112,9 +121,12 @@ exports.toggleBookmark = asyncHandler(async (req, res) => {
   const { postId } = req.params;
   const userId = req.user.id;
 
+  const post = await Post.findOne({ where: { uuid: postId } });
+  if (!post) throw new NotFoundError("Post not found");
+
   const result = await recommendationService.toggleBookmark({
     userId,
-    postId: parseInt(postId),
+    postId: post.id,
   });
 
   const message = result.bookmarked
@@ -127,9 +139,12 @@ exports.getBookmarkStatus = asyncHandler(async (req, res) => {
   const { postId } = req.params;
   const userId = req.user.id;
 
+  const post = await Post.findOne({ where: { uuid: postId } });
+  if (!post) throw new NotFoundError("Post not found");
+
   const result = await recommendationService.getBookmarkStatus({
     userId,
-    postId: parseInt(postId),
+    postId: post.id,
   });
 
   return ok(res, result, "Bookmark status retrieved");

@@ -9,6 +9,12 @@ const Category = sequelize.define(
       primaryKey: true,
       autoIncrement: true,
     },
+    uuid: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      unique: true,
+      allowNull: false,
+    },
     name: {
       type: DataTypes.STRING(200),
       allowNull: false,

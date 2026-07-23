@@ -9,6 +9,12 @@ const PostTag = sequelize.define(
       primaryKey: true,
       autoIncrement: true,
     },
+    uuid: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      unique: true,
+      allowNull: false,
+    },
     post_id: {
       type: DataTypes.INTEGER,
       allowNull: false,

@@ -9,6 +9,12 @@ const PageContent = sequelize.define(
       primaryKey: true,
       autoIncrement: true,
     },
+    uuid: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      unique: true,
+      allowNull: false,
+    },
     page_key: {
       type: DataTypes.STRING(100),
       allowNull: false,
