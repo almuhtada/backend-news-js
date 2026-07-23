@@ -294,14 +294,17 @@ class PostService {
     });
 
     // Send Telegram Notification (non-blocking)
+    const frontendUrl = process.env.FRONTEND_URL || "https://almuhtada.org";
     sendTelegramMessage({
       topic: "PENULIS",
+      useHtml: true,
       text:
-        `📝 Berita Baru Dikirim\n\n` +
-        `📰 Judul: ${post.title}\n` +
-        `✍️ Penulis: ${author ? author.username : "Unknown"}\n` +
-        `⏰ Waktu: ${new Date().toLocaleString("id-ID")}\n\n` +
-        `Status: Menunggu review editor`,
+        `📝 <b>Berita Baru Dikirim</b>\n\n` +
+        `📌 <b>Judul:</b> ${post.title}\n` +
+        `✍️ <b>Penulis:</b> ${author ? author.username : "Unknown"}\n` +
+        `⏰ <b>Waktu:</b> ${new Date().toLocaleString("id-ID")}\n\n` +
+        `🟢 <b>Status:</b> <i>Menunggu review editor</i>\n` +
+        `🔍 <a href="${frontendUrl}/detail-news/${post.slug}"><b>Lihat Lengkap</b></a>`,
     }).catch((err) => console.error("Telegram notification failed:", err));
 
     return createdPost;

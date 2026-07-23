@@ -164,36 +164,31 @@ exports.updateNotificationStatus = async (req, res) => {
     const editorName = req.user?.username || "Editor";
 
     if (status === "approved") {
+      const frontendUrl = process.env.FRONTEND_URL || "https://almuhtada.org";
       await sendTelegramMessage({
         topic: "EDITOR",
-        text: `
-            ✅ *Berita Disetujui & Dipublish*
-
-            *Judul:* ${post?.title}
-            *Penulis:* ${author?.username || "Unknown"}
-            *Editor:* ${editorName}
-            *Waktu:* ${new Date().toLocaleString("id-ID")}
-
-            🔗 Link:
-            ${process.env.ADMIN_URL}/admin/berita/${post?.id}
-        `.trim(),
+        useHtml: true,
+        text: `🟢 <b>Berita Disetujui &amp; Dipublikasikan</b>\n\n` +
+              `📌 <b>Judul:</b> ${post?.title}\n` +
+              `✍️ <b>Penulis:</b> ${author?.username || "Unknown"}\n` +
+              `🛡️ <b>Editor:</b> ${editorName}\n` +
+              `⏰ <b>Waktu:</b> ${new Date().toLocaleString("id-ID")}\n\n` +
+              `🔗 <a href="${frontendUrl}/detail-news/${post?.slug}"><b>Lihat Lengkap</b></a>`
       });
     }
 
     if (status === "rejected") {
       await sendTelegramMessage({
         topic: "EDITOR",
-        text: `
-            ❌ Berita Ditolak
-
-            Judul: ${post?.title}
-            Penulis: ${author?.username || "Unknown"}
-            Editor: ${editorName}
-            Waktu: ${new Date().toLocaleString("id-ID")}
-
-            Alasan Penolakan:
-            ${rejection_reason || "Tidak ada alasan yang diberikan"}
-        `.trim(),
+        useHtml: true,
+        text: `🔴 <b>Berita Ditolak oleh Editor</b>\n\n` +
+              `📌 <b>Judul:</b> ${post?.title}\n` +
+              `✍️ <b>Penulis:</b> ${author?.username || "Unknown"}\n` +
+              `🛡️ <b>Editor:</b> ${editorName}\n` +
+              `⏰ <b>Waktu:</b> ${new Date().toLocaleString("id-ID")}\n\n` +
+              `❌ <b>Alasan Penolakan:</b>\n` +
+              `<i>"${rejection_reason || "Tidak ada alasan yang diberikan"}"</i>\n\n` +
+              `💡 <i>Silakan perbaiki berita Anda melalui dashboard penulis untuk dikirim kembali.</i>`
       });
     }
     // Fetch updated notification with post
