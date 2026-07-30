@@ -1,365 +1,236 @@
-# ✅ Deployment Checklist
+# Deployment Checklist
 
 Checklist lengkap untuk deployment ke production VPS.
 
 ---
 
-## 📋 Pre-Deployment (Di Local Machine)
+## Pre-Deployment (Di Local Machine)
 
 ### 1. Persiapan Files
 - [ ] Pastikan semua code sudah di-commit ke git
-- [ ] Test aplikasi di local dengan `docker-compose up -d`
+- [ ] Test aplikasi di local dengan `npm run dev`
 - [ ] Verifikasi semua endpoint API berfungsi
 - [ ] Backup database development jika perlu migrate data
 
-### 2. Edit Konfigurasi Deployment
-```bash
-- [ ] Edit deploy-vps.sh:
-      VPS_USER="root"           # User SSH VPS Anda
-      VPS_HOST="123.456.789.0"  # IP VPS Anda
-      VPS_PORT="22"             # SSH port (biasanya 22)
-```
-
-### 3. SSH Key Setup
+### 2. SSH Key Setup
 - [ ] Generate SSH key jika belum punya: `ssh-keygen -t rsa -b 4096`
-- [ ] Copy SSH key ke VPS: `ssh-copy-id root@your-vps-ip`
-- [ ] Test SSH connection: `ssh root@your-vps-ip`
+- [ ] Copy SSH key ke VPS: `ssh-copy-id deploy@your-vps-ip`
+- [ ] Test SSH connection: `ssh deploy@your-vps-ip`
 
 ---
 
-## 🚀 Deployment Process
+## Deployment Process
 
-### 1. Jalankan Deployment Script
+### 1. Upload Project ke VPS
+
 ```bash
-- [ ] chmod +x deploy-vps.sh
-- [ ] bash deploy-vps.sh
+rsync -avz --exclude 'node_modules' --exclude '.git' \
+   -e ssh ./ deploy@your-vps-ip:/var/www/almuhtada/backend-news-js/
 ```
 
-**Script akan otomatis:**
-- ✅ Detect OS (Ubuntu/AlmaLinux)
-- ✅ Install Docker & Docker Compose
-- ✅ Install Node.js & PM2
-- ✅ Setup firewall
-- ✅ Handle SELinux (AlmaLinux)
-- ✅ Upload project files
-- ✅ Create .env template
-
-### 2. SSH ke VPS dan Configure .env
+### 2. SSH ke VPS dan Install Dependencies
 
 ```bash
-- [ ] ssh root@your-vps-ip
-- [ ] cd /var/www/news-backend
-- [ ] nano .env
+ssh deploy@your-vps-ip
+cd /var/www/almuhtada/backend-news-js
+npm ci --omit=dev
+```
+
+### 3. Configure .env
+
+```bash
+cp .env.example .env
+nano .env
 ```
 
 **Edit nilai-nilai ini:**
-
-#### Database (OTOMATIS DIBUAT oleh Docker):
 ```env
-- [ ] DB_HOST=mysql              # JANGAN UBAH!
-- [ ] DB_USER=newsuser           # Bisa ganti
-- [ ] DB_PASSWORD=STRONG_PWD     # WAJIB ganti!
-- [ ] DB_NAME=news_production    # Bisa ganti
-- [ ] DB_PORT=3306               # JANGAN UBAH!
+DB_HOST=127.0.0.1
+DB_USER=newsuser
+DB_PASSWORD=STRONG_PWD
+DB_NAME=news_production
+NODE_ENV=production
+PORT=3001
+JWT_SECRET=$(openssl rand -base64 32)
+BACKEND_URL=https://api.domain.com
+CORS_ORIGINS=https://admin.domain.com
 ```
 
-#### Application:
-```env
-- [ ] NODE_ENV=production
-- [ ] PORT=3001
-- [ ] JWT_SECRET=RANDOM_SECRET   # Generate: openssl rand -base64 32
-```
-
-#### API Keys:
-```env
-- [ ] GROQ_API_KEY=your_actual_groq_key
-- [ ] TELEGRAM_BOT_TOKEN=your_actual_token
-- [ ] TELEGRAM_CHAT_ID=your_actual_chat_id
-```
-
-#### Backend URL:
-```env
-- [ ] BACKEND_URL=https://your-domain.com  # Atau http://your-ip:3001
-```
-
-### 3. Start Aplikasi
+### 4. Start Aplikasi dengan PM2
 
 ```bash
-- [ ] docker-compose up -d
-- [ ] docker-compose ps          # Check status
-- [ ] docker-compose logs -f     # Check logs
+pm2 startOrReload ecosystem.config.js --env production
+pm2 save
+pm2 startup
 ```
 
-### 4. Verify Everything Works
+### 5. Verify Everything Works
 
 ```bash
-- [ ] curl http://localhost:3001/health
-      Expected: {"status":"ok",...}
+curl http://localhost:3001/health
+# Expected: {"success":true,"status":"healthy",...}
 
-- [ ] curl http://localhost:3001/api/posts
-      Expected: JSON response dengan posts
+curl http://localhost:3001/api/posts
+# Expected: JSON response dengan posts
 
-- [ ] docker ps
-      Expected: 2 containers running (news-backend, news-mysql)
+pm2 status
+# Expected: online status untuk almuhtada-api
 ```
 
 ---
 
-## 🔐 Security Setup
+## Security Setup
 
 ### 1. Firewall
 ```bash
-# Ubuntu
-- [ ] ufw status
-- [ ] ufw allow 22,80,443,3001/tcp
-
-# AlmaLinux
-- [ ] firewall-cmd --list-all
-- [ ] firewall-cmd --permanent --add-port=3001/tcp
-- [ ] firewall-cmd --reload
+sudo ufw allow OpenSSH
+sudo ufw allow 'Nginx Full'
+sudo ufw enable
 ```
 
-### 2. SSL Certificate (Recommended)
+### 2. SSL Certificate
 ```bash
-- [ ] Install Nginx: apt-get install nginx (Ubuntu)
-                     dnf install nginx (AlmaLinux)
-
-- [ ] Configure Nginx reverse proxy
-- [ ] Install certbot: apt-get install certbot python3-certbot-nginx
-- [ ] Get SSL cert: certbot --nginx -d your-domain.com
+sudo apt install nginx certbot python3-certbot-nginx -y
+sudo cp config/nginx/nginx-api.conf /etc/nginx/sites-available/almuhtada-api
+sudo ln -s /etc/nginx/sites-available/almuhtada-api /etc/nginx/sites-enabled/
+sudo certbot --nginx -d api.domain.com
 ```
 
 ### 3. Security Best Practices
 - [ ] Change default SSH port (edit /etc/ssh/sshd_config)
 - [ ] Disable root SSH login
 - [ ] Enable fail2ban
-- [ ] Regular security updates: `apt update && apt upgrade`
+- [ ] Regular security updates: `sudo apt update && sudo apt upgrade`
 
 ---
 
-## 📊 Monitoring Setup
+## Monitoring Setup
 
 ### 1. Health Check
 ```bash
-- [ ] Test endpoint: curl http://localhost:3001/health
-- [ ] Setup monitoring script:
-      crontab -e
-      */5 * * * * cd /var/www/news-backend && bash monitor.sh
+curl http://localhost:3001/health
 ```
 
 ### 2. Log Monitoring
 ```bash
-- [ ] docker-compose logs -f              # Real-time logs
-- [ ] docker-compose logs --tail=100      # Last 100 lines
-- [ ] Install log rotation
+pm2 logs almuhtada-api
+pm2 logs almuhtada-api --lines 100
 ```
 
 ### 3. Resource Monitoring
 ```bash
-- [ ] docker stats                        # Container resources
-- [ ] htop                               # System resources
-- [ ] df -h                              # Disk usage
+htop
+df -h
+free -h
 ```
 
 ---
 
-## 💾 Backup Setup
+## Backup Setup
 
-### 1. Automatic Backup
+### 1. Manual Backup
 ```bash
-- [ ] Test manual backup: bash backup.sh
-- [ ] Setup cron job:
-      crontab -e
-      0 2 * * * cd /var/www/news-backend && bash backup.sh >> logs/backup.log 2>&1
+mysqldump -u newsuser -p news_production | gzip > backups/db_$(date +%Y%m%d).sql.gz
 ```
 
-### 2. Verify Backup
+Atau gunakan script:
 ```bash
-- [ ] ls -lh backups/
-- [ ] Test restore: bash restore.sh latest
+bash scripts/deployment/backup.sh
 ```
 
-### 3. Remote Backup (Recommended)
+### 2. Automatic Backup dengan Cron
 ```bash
-- [ ] Setup rsync to backup server
-- [ ] Or use cloud storage (S3, Google Cloud)
+crontab -e
+0 2 * * * cd /var/www/almuhtada/backend-news-js && bash scripts/deployment/backup.sh >> logs/backup.log 2>&1
 ```
 
 ---
 
-## 🌐 Domain & DNS Setup (Optional)
+## Domain & DNS Setup
 
 ### 1. Point Domain to VPS
 ```bash
-- [ ] Add A record: your-domain.com → VPS_IP
-- [ ] Wait for DNS propagation (bisa sampai 24 jam)
-- [ ] Test: ping your-domain.com
+- [ ] Add A record: api.domain.com -> VPS_IP
+- [ ] Add A record: admin.domain.com -> VPS_IP
+- [ ] Wait for DNS propagation
 ```
 
 ### 2. Nginx Reverse Proxy
-```bash
-- [ ] Create nginx config: /etc/nginx/sites-available/news-backend
-- [ ] Enable site: ln -s /etc/nginx/sites-available/news-backend /etc/nginx/sites-enabled/
-- [ ] Test config: nginx -t
-- [ ] Reload nginx: systemctl reload nginx
-```
+Config tersedia di `deploy/ubuntu/almuhtada-api.nginx.conf`
 
 ### 3. SSL Certificate
 ```bash
-- [ ] certbot --nginx -d your-domain.com
-- [ ] Test auto-renewal: certbot renew --dry-run
+certbot --nginx -d api.domain.com
+certbot renew --dry-run
 ```
 
 ---
 
-## 🧪 Testing Checklist
+## Testing Checklist
 
 ### 1. API Endpoints
-```bash
 - [ ] GET  /health
 - [ ] GET  /api/posts
 - [ ] POST /api/auth/login
 - [ ] GET  /api/categories
-- [ ] POST /api/posts (with auth)
-```
 
 ### 2. Database
 ```bash
-- [ ] docker exec -it news-mysql mysql -u newsuser -p
-- [ ] SHOW DATABASES;
-- [ ] USE news_production;
-- [ ] SHOW TABLES;
-- [ ] SELECT COUNT(*) FROM posts;
-```
-
-### 3. Performance
-```bash
-- [ ] Response time < 500ms
-- [ ] Memory usage < 80%
-- [ ] CPU usage < 70%
-- [ ] Disk space available > 20%
+mysql -u newsuser -p
+SHOW DATABASES;
+USE news_production;
+SHOW TABLES;
+SELECT COUNT(*) FROM posts;
 ```
 
 ---
 
-## 🔄 Post-Deployment
+## Post-Deployment
 
 ### 1. Documentation
-```bash
 - [ ] Document server credentials (secure location)
-- [ ] Update API documentation
 - [ ] Note deployed version/commit hash
-```
 
-### 2. Team Notification
-```bash
-- [ ] Notify team deployment completed
-- [ ] Share new production URL
-- [ ] Share documentation updates
-```
-
-### 3. Monitoring
-```bash
+### 2. Monitoring
 - [ ] Setup uptime monitoring (UptimeRobot, etc)
-- [ ] Setup error tracking (Sentry, etc)
-- [ ] Setup analytics
-```
+- [ ] Setup PM2 log rotate: `pm2 install pm2-logrotate`
 
 ---
 
-## 🚨 Emergency Recovery Plan
-
-### If Something Goes Wrong:
-
-#### 1. Quick Restart
-```bash
-- [ ] ssh root@vps
-- [ ] cd /var/www/news-backend
-- [ ] bash quick-start.sh
-```
-
-#### 2. Restore from Backup
-```bash
-- [ ] bash restore.sh latest
-- [ ] docker-compose restart
-```
-
-#### 3. Check Logs
-```bash
-- [ ] docker-compose logs backend
-- [ ] docker-compose logs mysql
-- [ ] tail -f logs/pm2-error.log
-```
-
-#### 4. Contact Support
-```bash
-- [ ] Document the error
-- [ ] Check troubleshooting guide
-- [ ] Contact admin/developer
-```
-
----
-
-## 📱 Quick Commands Reference
+## Quick Commands Reference
 
 ```bash
-# Check status
-docker-compose ps
-docker stats
-systemctl status docker
+# PM2
+pm2 status                    # Check status
+pm2 logs almuhtada-api        # View logs
+pm2 restart almuhtada-api     # Restart
+pm2 reload almuhtada-api --update-env  # Reload with new env
 
-# View logs
-docker-compose logs -f
-docker-compose logs backend --tail=100
+# Docker
+docker-compose up -d          # Start
+docker-compose down           # Stop
+docker-compose logs -f        # Logs
 
-# Restart
-docker-compose restart
-docker-compose restart backend
-
-# Stop/Start
-docker-compose down
-docker-compose up -d
-
-# Backup/Restore
-bash backup.sh
-bash restore.sh latest
-
-# Monitor
-bash monitor.sh
-pm2 monit (if using PM2)
+# Backup
+bash scripts/deployment/backup.sh
+bash scripts/deployment/restore.sh latest
 
 # Update
 git pull
-docker-compose down && docker-compose up -d --build
+npm ci --omit=dev
+pm2 reload almuhtada-api --update-env
 ```
 
 ---
 
-## ✅ Final Verification
+## Final Verification
 
-Sebelum consider deployment success:
-
-- [ ] ✅ Aplikasi accessible dari internet
-- [ ] ✅ Health endpoint returns OK
-- [ ] ✅ All API endpoints working
-- [ ] ✅ Database connected
-- [ ] ✅ SSL certificate installed (if domain)
-- [ ] ✅ Firewall configured
-- [ ] ✅ Backup working
-- [ ] ✅ Monitoring setup
-- [ ] ✅ Emergency recovery tested
-- [ ] ✅ Documentation updated
-
----
-
-## 🎉 Deployment Complete!
-
-Jika semua checklist di atas ✅, deployment Anda berhasil!
-
-**Next Steps:**
-1. Monitor aplikasi 24 jam pertama
-2. Test semua features
-3. Setup continuous deployment (optional)
-4. Regular maintenance schedule
-
-**Good luck! 🚀**
+- [ ] Aplikasi accessible dari internet
+- [ ] Health endpoint returns healthy
+- [ ] All API endpoints working
+- [ ] Database connected
+- [ ] SSL certificate installed (if domain)
+- [ ] Firewall configured
+- [ ] Backup working
+- [ ] Monitoring setup
+- [ ] PM2 startup enabled

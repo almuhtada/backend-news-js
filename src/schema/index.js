@@ -76,6 +76,18 @@ Tag.belongsToMany(Post, {
   as: "posts",
 });
 
+// PostTag direct relationships for querying PostTag model directly
+PostTag.belongsTo(Tag, { foreignKey: "tag_id", as: "tag" });
+Tag.hasMany(PostTag, { foreignKey: "tag_id", as: "postTags" });
+PostTag.belongsTo(Post, { foreignKey: "post_id", as: "post" });
+Post.hasMany(PostTag, { foreignKey: "post_id", as: "postTags" });
+
+// PostCategory direct relationships for querying PostCategory model directly
+PostCategory.belongsTo(Category, { foreignKey: "category_id", as: "category" });
+Category.hasMany(PostCategory, { foreignKey: "category_id", as: "postCategories" });
+PostCategory.belongsTo(Post, { foreignKey: "post_id", as: "post" });
+Post.hasMany(PostCategory, { foreignKey: "post_id", as: "postCategories" });
+
 // Post - Comment (One-to-Many)
 Post.hasMany(Comment, { foreignKey: "post_id", as: "comments" });
 Comment.belongsTo(Post, { foreignKey: "post_id", as: "post" });

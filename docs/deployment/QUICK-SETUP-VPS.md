@@ -1,10 +1,10 @@
-# ⚡ Quick Setup VPS - Sudah Login di Server
+# Quick Setup VPS - Sudah Login di Server
 
 Panduan super cepat untuk setup jika Anda **sudah di VPS**.
 
 ---
 
-## 🎯 Situasi Anda Sekarang
+## Situasi Anda Sekarang
 
 Anda sudah login di VPS dengan direktori: **`backend-news-js`**
 
@@ -12,25 +12,29 @@ Prompt Anda: `[root@server backend-news-js]#`
 
 ---
 
-## 🚀 Quick Steps
+## Quick Steps
 
 ### Langkah 1: Install Docker & Docker Compose
 
 ```bash
-# Install Docker
 curl -fsSL https://get.docker.com | sh
 systemctl enable --now docker
 
-# Install Docker Compose
 curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 chmod +x /usr/local/bin/docker-compose
 
-# Verify
 docker --version
 docker-compose --version
 ```
 
 ### Langkah 2: Setup Firewall
+
+```bash
+ufw --force enable
+ufw allow OpenSSH
+ufw allow 'Nginx Full'
+ufw reload
+```
 
 **Jika AlmaLinux:**
 ```bash
@@ -40,26 +44,11 @@ firewall-cmd --permanent --add-service=http
 firewall-cmd --permanent --add-service=https
 firewall-cmd --permanent --add-port=3001/tcp
 firewall-cmd --reload
-
-# Disable SELinux (untuk testing)
-setenforce 0
-sed -i 's/^SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config
-```
-
-**Jika Ubuntu:**
-```bash
-ufw --force enable
-ufw allow 22,80,443,3001/tcp
-ufw reload
 ```
 
 ### Langkah 3: Create Directories
 
 ```bash
-# Jika di /var/www/backend-news-js atau /root/backend-news-js
-cd /root/backend-news-js  # atau sesuai lokasi Anda
-
-# Create directories
 mkdir -p uploads backups logs
 chmod -R 755 .
 ```
@@ -67,55 +56,29 @@ chmod -R 755 .
 ### Langkah 4: Configure .env
 
 ```bash
-# Copy example
 cp .env.example .env
-
-# Edit
 nano .env
 ```
 
 **Isi minimal yang HARUS diubah:**
-
 ```env
-# Database (Auto-created by Docker - JANGAN UBAH DB_HOST!)
-DB_HOST=mysql
+DB_HOST=127.0.0.1
 DB_USER=newsuser
 DB_PASSWORD=GantiDenganPasswordKuat123!
 DB_NAME=news_production
-DB_PORT=3306
-
-# Application
 NODE_ENV=production
 PORT=3001
-
-# JWT Secret - Generate dengan: openssl rand -base64 32
-JWT_SECRET=PASTE_HASIL_GENERATE_DISINI
-
-# API Keys (isi dengan yang benar)
-GROQ_API_KEY=gsk_xxxxxxxx
-TELEGRAM_BOT_TOKEN=xxxxxxxxxx
-TELEGRAM_CHAT_ID=-xxxxxxxxxx
-
-# Backend URL
+JWT_SECRET=$(openssl rand -base64 32)
 BACKEND_URL=http://your-server-ip:3001
+CORS_ORIGINS=https://admin.domain.com
 ```
 
-**Generate JWT Secret:**
-```bash
-openssl rand -base64 32
-# Copy hasilnya dan paste ke JWT_SECRET
-```
-
-### Langkah 5: Start Application
+### Langkah 5: Start Aplikasi
 
 ```bash
-# Start
+# Dengan Docker
 docker-compose up -d
-
-# Check status
 docker-compose ps
-
-# View logs
 docker-compose logs -f
 ```
 
@@ -126,137 +89,66 @@ news-backend            Up 10 seconds   0.0.0.0:3001->3001/tcp
 news-mysql              Up 10 seconds   0.0.0.0:3306->3306/tcp
 ```
 
+Atau dengan PM2:
+```bash
+npm ci --omit=dev
+pm2 startOrReload ecosystem.config.js --env production
+pm2 save
+pm2 startup
+```
+
 ### Langkah 6: Verify
 
 ```bash
-# Check health
 curl http://localhost:3001/health
-
-# Expected:
-# {"status":"ok","timestamp":"..."}
-
-# Check database created
-docker exec -it news-mysql mysql -u newsuser -p
-# Enter password: GantiDenganPasswordKuat123!
-# Then: SHOW DATABASES;
+# {"success":true,"status":"healthy","timestamp":"..."}
 ```
 
 ---
 
-## ✅ One-Liner Installation (Copy-Paste)
+## One-Liner Installation
 
-Jika mau super cepat, copy semua ini dan paste di terminal:
-
+Install Docker:
 ```bash
-# Install Docker & Compose
-curl -fsSL https://get.docker.com | sh && \
-systemctl enable --now docker && \
+curl -fsSL https://get.docker.com | sh && systemctl enable --now docker && \
 curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && \
-chmod +x /usr/local/bin/docker-compose && \
-echo "✅ Docker installed: $(docker --version)" && \
-echo "✅ Docker Compose installed: $(docker-compose --version)"
+chmod +x /usr/local/bin/docker-compose && echo "Docker ready"
 ```
 
-Lalu setup firewall (pilih sesuai OS):
-
-**AlmaLinux:**
+Setup firewall Ubuntu:
 ```bash
-systemctl enable --now firewalld && \
-firewall-cmd --permanent --add-service=ssh && \
-firewall-cmd --permanent --add-service=http && \
-firewall-cmd --permanent --add-service=https && \
-firewall-cmd --permanent --add-port=3001/tcp && \
-firewall-cmd --reload && \
-setenforce 0 && \
-sed -i 's/^SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config && \
-echo "✅ Firewall configured"
-```
-
-**Ubuntu:**
-```bash
-ufw --force enable && \
-ufw allow 22,80,443,3001/tcp && \
-ufw reload && \
-echo "✅ Firewall configured"
+ufw --force enable && ufw allow OpenSSH && ufw allow 'Nginx Full' && ufw reload
 ```
 
 ---
 
-## 📋 Checklist
+## Checklist
 
-Setup berhasil jika:
-
-- [ ] ✅ `docker --version` berjalan
-- [ ] ✅ `docker-compose --version` berjalan
-- [ ] ✅ File `.env` sudah dibuat dan diisi
-- [ ] ✅ `docker-compose ps` menunjukkan 2 containers UP
-- [ ] ✅ `curl http://localhost:3001/health` return `{"status":"ok"}`
-- [ ] ✅ Database `news_production` sudah dibuat (auto by Docker)
+- [ ] `docker --version` berjalan
+- [ ] File `.env` sudah dibuat dan diisi
+- [ ] `docker-compose ps` menunjukkan 2 containers UP
+- [ ] `curl http://localhost:3001/health` return `{"success":true,"status":"healthy"}`
+- [ ] Database sudah dibuat
 
 ---
 
-## 🔧 Common Issues
-
-### Port 3001 sudah digunakan
+## Quick Commands
 
 ```bash
-# Check what's using it
-lsof -i :3001
-
-# Kill process
-kill -9 <PID>
-```
-
-### Docker daemon not running
-
-```bash
-systemctl status docker
-systemctl start docker
-```
-
-### Permission denied
-
-```bash
-chmod -R 755 /root/backend-news-js
-```
-
-### SELinux blocking (AlmaLinux)
-
-```bash
-setenforce 0
-getenforce  # Should show: Permissive
-```
-
----
-
-## 📱 Quick Commands
-
-```bash
-# Logs
 docker-compose logs -f
-
-# Restart
 docker-compose restart
-
-# Stop
 docker-compose down
-
-# Start
 docker-compose up -d
-
-# Status
 docker-compose ps
-
-# Backup database
-bash backup.sh
-
-# Restore database
-bash restore.sh latest
+pm2 status
+pm2 logs almuhtada-api
+bash scripts/deployment/backup.sh
+bash scripts/deployment/restore.sh latest
 ```
 
 ---
 
-## 🎉 Done!
+## Done!
 
 Aplikasi Anda sekarang running di:
 - **Local:** http://localhost:3001
@@ -267,6 +159,11 @@ Test dengan:
 curl http://your-server-ip:3001/health
 ```
 
-Jika perlu domain & SSL, baca [DOCKER-DEPLOYMENT.md](DOCKER-DEPLOYMENT.md) untuk setup Nginx & Let's Encrypt.
-
-**Selamat! 🚀**
+Jika perlu domain & SSL, setup Nginx:
+```bash
+sudo apt install nginx -y
+sudo cp config/nginx/nginx-api.conf /etc/nginx/sites-available/almuhtada-api
+sudo ln -s /etc/nginx/sites-available/almuhtada-api /etc/nginx/sites-enabled/
+sudo apt install certbot python3-certbot-nginx -y
+sudo certbot --nginx -d api.domain.com
+```

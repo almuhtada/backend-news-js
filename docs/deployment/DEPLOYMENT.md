@@ -1,33 +1,21 @@
-# Deployment Guide - Backend News Express
+# Deployment Guide - Almuhtada News Backend
 
 ## Overview
 
-Sistem ini dirancang untuk migrasi dari WordPress ke custom backend + frontend. Ada beberapa skenario deployment:
-
-### Skenario 1: Development Lokal (Sekarang)
-- Backend: Express.js (localhost:3001)
-- Frontend: Akan dibuat terpisah
-- Database: MySQL lokal (MAMP) - `wp397`
-
-### Skenario 2: Production (cPanel)
-- Backend: Express.js di cPanel Node.js app
-- Frontend: Static files di cPanel
-- Database: MySQL di cPanel (dengan data WordPress existing)
-
----
+Sistem backend untuk Almuhtada News berbasis Express.js dengan MySQL (Sequelize ORM).
 
 ## 1. Setup Development Lokal
 
 ### Prerequisites
-- Node.js (v16+)
-- MySQL (via MAMP atau standalone)
-- Database WordPress existing
+- Node.js (v18+)
+- MySQL 8.0+
+- npm
 
 ### Steps
 
-1. **Clone/Extract project**
+1. **Clone project**
 ```bash
-cd /path/to/backend-news-express
+cd backend-news-js
 ```
 
 2. **Install dependencies**
@@ -36,431 +24,186 @@ npm install
 ```
 
 3. **Configure environment**
+```bash
+cp .env.example .env
+```
+
 Edit `.env`:
 ```env
 DB_HOST=localhost
 DB_USER=root
 DB_PASSWORD=root
-DB_NAME=wp397        # Nama database WordPress Anda
-DB_PORT=8889         # Port MAMP MySQL (default 8889) atau 3306 untuk MySQL standalone
+DB_NAME=news_db
+DB_PORT=3306
 JWT_SECRET=ganti_dengan_secret_key_yang_aman
-PORT=3001            # Port untuk backend server
+PORT=3001
 ```
 
-4. **Test database connection**
+4. **Create database**
+```sql
+CREATE DATABASE news_db;
+```
+
+5. **Start development**
 ```bash
-npm start
+npm run dev
 ```
 
-Jika berhasil, Anda akan melihat:
+Akan muncul:
 ```
 Server running on port 3001
-✅ Database connected
-✅ Database models synced
 ```
 
----
+## 2. Production dengan PM2
 
-## 2. Migrasi Data dari WordPress
-
-### Jika WordPress ada di database lokal yang sama:
+### Setup
 
 ```bash
-npm run migrate
+# Install PM2 global
+npm install -g pm2
+
+# Start aplikasi
+pm2 start ecosystem.config.js --env production
+
+# Save process list
+pm2 save
+
+# Setup auto-start on reboot
+pm2 startup
 ```
 
-Script akan:
-- Membaca data dari tabel WordPress (`wp_posts`, `wp_terms`, dll)
-- Membuat tabel baru untuk sistem custom
-- Copy semua data (categories, tags, users, posts)
-
-### Jika WordPress ada di server remote/cPanel:
-
-Ada 2 opsi:
-
-#### Opsi A: Export/Import Database
-
-1. **Export data WordPress dari cPanel:**
-```bash
-# Di cPanel, export database MySQL
-phpMyAdmin → Export → Custom → Pilih tabel:
-- wp_posts
-- wp_terms
-- wp_term_taxonomy
-- wp_term_relationships
-- wp_users
-- wp_postmeta
-```
-
-2. **Import ke database lokal:**
-```sql
--- Buat database temporary untuk WordPress data
-CREATE DATABASE wordpress_temp;
-
--- Import file SQL
-mysql -u root -p wordpress_temp < wordpress_export.sql
-```
-
-3. **Update migration script:**
-Edit `scripts/migrate-from-wordpress.js`, ubah koneksi untuk baca dari `wordpress_temp`:
-
-```javascript
-// Di bagian atas file, tambahkan koneksi kedua
-const { Sequelize } = require("sequelize");
-
-const wpSequelize = new Sequelize(
-  "wordpress_temp",  // Database WordPress
-  "root",
-  "root",
-  {
-    host: "localhost",
-    port: 8889,
-    dialect: "mysql",
-    logging: false,
-  }
-);
-
-// Lalu di setiap query, gunakan wpSequelize.query() untuk query WordPress
-```
-
-#### Opsi B: Dump data langsung dari remote MySQL
+### Logs
 
 ```bash
-# Dump dari remote server
-ssh user@your-cpanel-server.com
-mysqldump -u dbuser -p dbname wp_posts wp_terms wp_term_taxonomy \
-  wp_term_relationships wp_users wp_postmeta > wordpress_data.sql
-
-# Download file
-scp user@server:/path/to/wordpress_data.sql ./
-
-# Import lokal
-mysql -u root -p wp397 < wordpress_data.sql
+pm2 logs almuhtada-api
+pm2 monit
 ```
 
----
-
-## 3. Deployment ke cPanel
-
-### A. Setup Node.js App di cPanel
-
-1. **Login ke cPanel**
-2. **Buka "Setup Node.js App"**
-3. **Create Application:**
-   - Node.js version: 16.x atau higher
-   - Application mode: Production
-   - Application root: `/home/username/backend-news`
-   - Application URL: `https://yourdomain.com` atau subdomain
-   - Application startup file: `app.js`
-   - Environment variables:
-     ```
-     DB_HOST=localhost
-     DB_USER=cpanel_db_user
-     DB_PASSWORD=your_db_password
-     DB_NAME=cpanel_wp_database
-     DB_PORT=3306
-     JWT_SECRET=your_super_secret_key
-     PORT=3001
-     ```
-
-4. **Upload files:**
-```bash
-# Via FTP/File Manager atau rsync
-rsync -avz --exclude node_modules --exclude .git \
-  ./ username@server:/home/username/backend-news/
-```
-
-5. **Install dependencies di cPanel:**
-```bash
-# SSH ke cPanel
-cd ~/backend-news
-source ~/nodevenv/backend-news/16/bin/activate
-npm install --production
-```
-
-6. **Start/Restart application:**
-- Di cPanel Node.js App interface, click "Restart"
-
-### B. Configure MySQL di cPanel
-
-1. **Buat database baru untuk sistem custom:**
-```sql
-CREATE DATABASE cpanel_news_db;
-```
-
-2. **Grant permissions:**
-```sql
-GRANT ALL PRIVILEGES ON cpanel_news_db.* TO 'db_user'@'localhost';
-FLUSH PRIVILEGES;
-```
-
-3. **Jalankan migration:**
-```bash
-# SSH ke server
-cd ~/backend-news
-source ~/nodevenv/backend-news/16/bin/activate
-npm run migrate
-```
-
-### C. Setup Frontend
-
-Jika menggunakan React/Vue/Next.js:
-
-1. **Build frontend:**
-```bash
-# Di local development
-cd /path/to/frontend
-npm run build
-```
-
-2. **Upload ke cPanel:**
-```bash
-# Upload folder build ke public_html
-rsync -avz ./build/ username@server:/home/username/public_html/
-```
-
-3. **Configure API endpoint:**
-```javascript
-// Di frontend, set base URL
-const API_BASE_URL = "https://yourdomain.com/api";
-```
-
-### D. Setup Proxy/Reverse Proxy (Optional)
-
-#### Opsi 1: Apache (.htaccess) - untuk cPanel
-
-Jika ingin akses backend via `/api`:
-
-Edit `.htaccess` di `public_html`:
-```apache
-RewriteEngine On
-
-# Proxy API requests to Node.js
-RewriteCond %{REQUEST_URI} ^/api
-RewriteRule ^api/(.*)$ http://localhost:3001/api/$1 [P,L]
-
-# Serve frontend for all other routes
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule . /index.html [L]
-```
-
-#### Opsi 2: Nginx - untuk VPS (Recommended)
-
-**Setup otomatis dengan script:**
-```bash
-cd /path/to/backend-news-express
-chmod +x setup-nginx.sh
-sudo ./setup-nginx.sh
-```
-
-**Setup manual:**
-Lihat dokumentasi lengkap di [NGINX-SETUP.md](NGINX-SETUP.md)
+## 3. Production dengan Docker
 
 ```bash
-# Install Nginx
-sudo apt install nginx -y  # Ubuntu/Debian
-# atau
-sudo dnf install nginx -y  # AlmaLinux/RHEL
+# Build dan start
+docker-compose up -d
 
-# Copy config
-sudo cp nginx-api.conf /etc/nginx/sites-available/news-api
-sudo ln -s /etc/nginx/sites-available/news-api /etc/nginx/sites-enabled/
+# Check status
+docker-compose ps
 
-# Test dan reload
+# Logs
+docker-compose logs -f
+```
+
+## 4. Setup Nginx Reverse Proxy
+
+### Instalasi Nginx
+
+```bash
+sudo apt update
+sudo apt install nginx -y
+sudo systemctl enable nginx
+```
+
+### Konfigurasi
+
+Copy config dari `deploy/ubuntu/almuhtada-api.nginx.conf` atau `config/nginx/nginx-api.conf`:
+
+```bash
+sudo cp config/nginx/nginx-api.conf /etc/nginx/sites-available/almuhtada-api
+sudo ln -s /etc/nginx/sites-available/almuhtada-api /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl reload nginx
+```
 
-# Setup SSL
+### SSL dengan Let's Encrypt
+
+```bash
 sudo apt install certbot python3-certbot-nginx -y
 sudo certbot --nginx -d api.almuhtada.org
 ```
 
-**File yang tersedia:**
-- `nginx-api.conf` - Konfigurasi nginx
-- `NGINX-SETUP.md` - Dokumentasi lengkap
-- `setup-nginx.sh` - Script auto-setup
+## 5. Environment Variables (.env)
 
----
-
-## 4. Alternatif: Manual Data Entry
-
-Jika migrasi otomatis tidak memungkinkan, Anda bisa:
-
-1. **Buat content manual via API:**
-```bash
-# Create categories
-curl -X POST http://localhost:3001/api/categories \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Berita", "slug": "berita"}'
-
-# Create posts
-curl -X POST http://localhost:3001/api/posts \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Judul Artikel",
-    "content": "Konten artikel...",
-    "status": "publish",
-    "category_ids": [1]
-  }'
+```
+DB_HOST=localhost / mysql (Docker)
+DB_PORT=3306
+DB_NAME=news_db
+DB_USER=your_user
+DB_PASSWORD=your_password
+NODE_ENV=production
+PORT=3001
+BACKEND_URL=https://api.domain.com
+CORS_ORIGINS=https://admin.domain.com,https://domain.com
+JWT_SECRET=generate_with_openssl_rand_-base64_32
+GROQ_API_KEY=your_groq_key
+TELEGRAM_BOT_TOKEN=your_token
+TELEGRAM_CHAT_ID=your_chat_id
+TELEGRAM_TOPIC_PENULIS=3
+TELEGRAM_TOPIC_EDITOR=2
 ```
 
-2. **Import via CSV/SQL:**
-Buat script custom untuk import dari CSV atau langsung insert ke database.
-
----
-
-## 5. Testing
-
-### Local Testing
+## 6. Testing
 
 ```bash
-# Start server
-npm run dev
+# Health check
+curl http://localhost:3001/health
 
-# Test endpoints
+# API endpoints
 curl http://localhost:3001/api/posts
-curl http://localhost:3001/api/categories
+curl http://localhost:3001/api-docs
 ```
 
-### Production Testing
-
-```bash
-# Test dari remote
-curl https://yourdomain.com/api/posts
-curl https://yourdomain.com/api/categories
-```
-
----
-
-## 6. Troubleshooting
+## 7. Troubleshooting
 
 ### Database connection error
+```text
+Fatal startup error: connect ECONNREFUSED
 ```
-❌ Database connection error: connect ECONNREFUSED
-```
-
-**Solution:**
-- Check MySQL service is running
+- Check MySQL is running
 - Verify credentials in `.env`
-- Check port (MAMP uses 8889, standard MySQL uses 3306)
-
-### Migration error: Table doesn't exist
-```
-❌ Error: Table 'wp397.wp_terms' doesn't exist
-```
-
-**Solution:**
-- Database tidak memiliki tabel WordPress
-- Ikuti langkah "Migrasi Data dari WordPress" di atas
-- Atau gunakan database yang benar-benar ada WordPress-nya
 
 ### Port already in use
+```text
+Port 3001 is already in use
 ```
-Error: listen EADDRINUSE :::3001
-```
-
-**Solution:**
 ```bash
-# Find process using port
-lsof -i :3001
-
-# Kill process
-kill -9 <PID>
-
-# Or change PORT in .env
-PORT=3002
+lsof -ti:3001 | xargs kill -9
 ```
 
-### cPanel Node.js app not starting
-
-**Solution:**
-- Check error logs in cPanel Node.js App interface
-- Verify all environment variables are set
-- Make sure `app.js` exists in application root
-- Check Node.js version compatibility
-
----
-
-## 7. Maintenance
-
-### Update Code
-
+### PM2 not starting
 ```bash
-# Pull changes
-git pull origin main
-
-# Install new dependencies
-npm install
-
-# Restart server
-# Local:
-npm run dev
-
-# cPanel:
-# Restart via cPanel Node.js App interface
+pm2 logs almuhtada-api --lines 50
+pm2 restart almuhtada-api
 ```
 
-### Backup Database
+## 8. Maintenance
 
+### Update code
 ```bash
-# Dump database
+git pull
+npm ci --omit=dev
+pm2 reload almuhtada-api --update-env
+```
+
+### Backup database
+```bash
 mysqldump -u user -p database_name > backup_$(date +%Y%m%d).sql
-
-# Restore
-mysql -u user -p database_name < backup_20260118.sql
 ```
 
-### Monitor Logs
-
+### Monitor logs
 ```bash
-# cPanel
-tail -f ~/logs/backend-news/error.log
-
-# Or check in cPanel Node.js App interface
+pm2 logs almuhtada-api
+tail -f logs/pm2-error.log
 ```
 
----
+## 9. Backup Scripts
 
-## 8. Keamanan
-
-### Checklist untuk Production:
-
-- [ ] Ganti `JWT_SECRET` dengan string random yang kuat
-- [ ] Setup HTTPS/SSL certificate
-- [ ] Enable CORS hanya untuk domain yang diizinkan
-- [ ] Implement rate limiting
-- [ ] Setup authentication middleware
-- [ ] Sanitize user input
-- [ ] Update dependencies regularly
-- [ ] Setup firewall rules
-- [ ] Backup database secara regular
-
-### Update CORS untuk Production
-
-Edit `app.js`:
-```javascript
-const cors = require("cors");
-
-app.use(cors({
-  origin: [
-    "https://yourdomain.com",
-    "https://www.yourdomain.com"
-  ],
-  credentials: true
-}));
-```
-
----
-
-## Next Steps
-
-1. ✅ Setup database dan backend lokal
-2. ⏳ Migrasi data dari WordPress (jika ada)
-3. ⏳ Buat frontend (React/Vue/Next.js)
-4. ⏳ Test integrasi backend-frontend
-5. ⏳ Deploy ke cPanel
-6. ⏳ Setup domain dan SSL
-7. ⏳ Production testing
-
-Jika ada pertanyaan atau issue, silakan buka issue di repository atau hubungi developer.
+Tersedia di `scripts/deployment/`:
+- `backup.sh` - Backup database
+- `restore.sh` - Restore database
+- `deploy.sh` - Local Docker deployment
+- `deploy-vps.sh` - VPS auto-setup (multi-OS)
+- `setup-ubuntu.sh` - Ubuntu setup
+- `setup-almalinux.sh` - AlmaLinux setup
+- `monitor.sh` - Health monitoring
+- `quick-start.sh` - Emergency recovery
+- `setup-nginx.sh` - Nginx auto-setup
+- `setup-direct.sh` - Direct VPS setup

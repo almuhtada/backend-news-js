@@ -521,6 +521,24 @@ class PostService {
     });
 
     if (posts.length < requestedLimit) {
+      // Fallback 1: Ambil berita dari 30 hari terakhir (berita baru yang banyak dilihat)
+      const fallbackThreshold = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      posts = await Post.findAll({
+        where: {
+          status: "publish",
+          published_at: {
+            [Op.gte]: fallbackThreshold,
+          },
+        },
+        attributes: postAttributes,
+        include: postIncludes,
+        order: [[sequelize.literal("engagement_score"), "DESC"]],
+        limit: requestedLimit,
+      });
+    }
+
+    if (posts.length < requestedLimit) {
+      // Fallback 2: Safety net final jika artikel sangat sedikit
       posts = await Post.findAll({
         where: {
           status: "publish",

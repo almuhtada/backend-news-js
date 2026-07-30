@@ -1,5 +1,5 @@
 const express = require("express");
-const { authenticate } = require("../middleware/auth");
+const { authenticate, authorize } = require("../middleware/auth");
 const router = express.Router();
 const notificationController = require("../controller/notificationController");
 
@@ -186,6 +186,7 @@ router.post("/", authenticate, notificationController.createNotification);
 router.put(
   "/:id/status",
   authenticate,
+  authorize("admin", "editor"),
   notificationController.updateNotificationStatus,
 );
 
@@ -212,6 +213,6 @@ router.put(
  *       500:
  *         description: Server error
  */
-router.delete("/:id", authenticate, notificationController.deleteNotification);
+router.delete("/:id", authenticate, authorize("admin", "editor"), notificationController.deleteNotification);
 
 module.exports = router;
