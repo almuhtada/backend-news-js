@@ -28,14 +28,24 @@ app.use(
   helmet({
     contentSecurityPolicy: false, // Disabled for compatibility with Swagger UI
     crossOriginResourcePolicy: { policy: "cross-origin" },
-  })
+  }),
 );
 
 app.use(morgan(ENV === "production" ? "combined" : "dev"));
 
 const allowedOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(",").map((origin) => origin.trim())
-  : ["http://localhost:5174", "http://localhost:3000", "http://localhost:5173","http://192.168.100.76:5173"];
+  : [
+      "http://localhost:5174",
+      "http://localhost:3000",
+      "http://localhost:5173",
+      "http://192.168.100.76:5173",
+      "https://dashboard.almuhtada.org",
+      "https://almuhtada.org",
+      "https://www.almuhtada.org",
+      "https://frontend-news-ts.vercel.app",
+      "https://fe.almuhtada.org",
+    ];
 
 app.use(
   cors({

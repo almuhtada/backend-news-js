@@ -185,7 +185,7 @@ router.post("/", authenticate, createCategory);
  *       500:
  *         description: Server error
  */
-router.put("/:id", authenticate, updateCategory);
+router.put("/:uuid", authenticate, updateCategory);
 
 /**
  * @swagger
@@ -210,6 +210,6 @@ router.put("/:id", authenticate, updateCategory);
  *       500:
  *         description: Server error
  */
-router.delete("/:id", authenticate, deleteCategory);
+router.delete("/:uuid", authenticate, deleteCategory);
 
 module.exports = router;

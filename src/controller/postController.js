@@ -57,7 +57,7 @@ exports.createPost = asyncHandler(async (req, res) => {
  */
 exports.updatePost = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const post = await postService.updatePost(id, req.body);
+  const post = await postService.updatePost(id, req.body, req.user);
   return ok(res, post, "Post updated successfully");
 });
 

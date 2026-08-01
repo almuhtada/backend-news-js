@@ -45,5 +45,6 @@ router.post(
 );
 router.post("/mark-spam", authenticate, interactionController.markAsSpam);
 router.delete("/spam", authenticate, interactionController.deleteSpamComments);
+router.delete("/:uuid", authenticate, interactionController.deleteComment);
 
 module.exports = router;

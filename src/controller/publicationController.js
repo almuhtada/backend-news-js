@@ -1,4 +1,4 @@
-const { Publication } = require('../schema');
+const { Publication } = require("../schema");
 
 // Get all publications
 const getAllPublications = async (req, res) => {
@@ -12,29 +12,33 @@ const getAllPublications = async (req, res) => {
 
     let publications = await Publication.findAll({
       where,
-      order: [['year', 'DESC'], ['createdAt', 'DESC']]
+      order: [
+        ["year", "DESC"],
+        ["createdAt", "DESC"],
+      ],
     });
 
     // Apply search filter if provided
     if (search) {
       const searchLower = search.toLowerCase();
       publications = publications.filter(
-        p => p.title.toLowerCase().includes(searchLower) ||
-             p.authors.toLowerCase().includes(searchLower) ||
-             (p.journal && p.journal.toLowerCase().includes(searchLower))
+        (p) =>
+          p.title.toLowerCase().includes(searchLower) ||
+          p.authors.toLowerCase().includes(searchLower) ||
+          (p.journal && p.journal.toLowerCase().includes(searchLower)),
       );
     }
 
     res.json({
       success: true,
-      data: publications
+      data: publications,
     });
   } catch (error) {
-    console.error('Error fetching publications:', error);
+    console.error("Error fetching publications:", error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching publications',
-      error: error.message
+      message: "Error fetching publications",
+      error: error.message,
     });
   }
 };
@@ -48,20 +52,20 @@ const getPublicationById = async (req, res) => {
     if (!publication) {
       return res.status(404).json({
         success: false,
-        message: 'Publication not found'
+        message: "Publication not found",
       });
     }
 
     res.json({
       success: true,
-      data: publication
+      data: publication,
     });
   } catch (error) {
-    console.error('Error fetching publication:', error);
+    console.error("Error fetching publication:", error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching publication',
-      error: error.message
+      message: "Error fetching publication",
+      error: error.message,
     });
   }
 };
@@ -74,7 +78,7 @@ const createPublication = async (req, res) => {
     if (!title || !authors || !year) {
       return res.status(400).json({
         success: false,
-        message: 'Title, authors, and year are required'
+        message: "Title, authors, and year are required",
       });
     }
 
@@ -83,20 +87,20 @@ const createPublication = async (req, res) => {
       authors,
       year: parseInt(year),
       journal: journal || null,
-      link: link || null
+      link: link || null,
     });
 
     res.status(201).json({
       success: true,
-      message: 'Publication created successfully',
-      data: publication
+      message: "Publication created successfully",
+      data: publication,
     });
   } catch (error) {
-    console.error('Error creating publication:', error);
+    console.error("Error creating publication:", error);
     res.status(500).json({
       success: false,
-      message: 'Error creating publication',
-      error: error.message
+      message: "Error creating publication",
+      error: error.message,
     });
   }
 };
@@ -112,7 +116,7 @@ const updatePublication = async (req, res) => {
     if (!publication) {
       return res.status(404).json({
         success: false,
-        message: 'Publication not found'
+        message: "Publication not found",
       });
     }
 
@@ -121,20 +125,20 @@ const updatePublication = async (req, res) => {
       authors: authors || publication.authors,
       year: year ? parseInt(year) : publication.year,
       journal: journal !== undefined ? journal : publication.journal,
-      link: link !== undefined ? link : publication.link
+      link: link !== undefined ? link : publication.link,
     });
 
     res.json({
       success: true,
-      message: 'Publication updated successfully',
-      data: publication
+      message: "Publication updated successfully",
+      data: publication,
     });
   } catch (error) {
-    console.error('Error updating publication:', error);
+    console.error("Error updating publication:", error);
     res.status(500).json({
       success: false,
-      message: 'Error updating publication',
-      error: error.message
+      message: "Error updating publication",
+      error: error.message,
     });
   }
 };
@@ -149,7 +153,7 @@ const deletePublication = async (req, res) => {
     if (!publication) {
       return res.status(404).json({
         success: false,
-        message: 'Publication not found'
+        message: "Publication not found",
       });
     }
 
@@ -157,14 +161,14 @@ const deletePublication = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Publication deleted successfully'
+      message: "Publication deleted successfully",
     });
   } catch (error) {
-    console.error('Error deleting publication:', error);
+    console.error("Error deleting publication:", error);
     res.status(500).json({
       success: false,
-      message: 'Error deleting publication',
-      error: error.message
+      message: "Error deleting publication",
+      error: error.message,
     });
   }
 };
@@ -174,5 +178,5 @@ module.exports = {
   getPublicationById,
   createPublication,
   updatePublication,
-  deletePublication
+  deletePublication,
 };

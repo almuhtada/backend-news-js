@@ -2,6 +2,7 @@ const express = require("express");
 const { authenticate } = require("../middleware/auth");
 const {
   getAllTags,
+  getPopularTags,
   createTag,
   updateTag,
   deleteTag,
@@ -61,6 +62,28 @@ const router = express.Router();
  *         description: Server error
  */
 router.get("/", getAllTags);
+
+/**
+ * @swagger
+ * /api/tags/popular:
+ *   get:
+ *     summary: Get most used tags
+ *     tags: [Tags]
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *           maximum: 50
+ *         description: Number of tags to return
+ *     responses:
+ *       200:
+ *         description: Most used tags retrieved successfully
+ *       500:
+ *         description: Server error
+ */
+router.get("/popular", getPopularTags);
 
 /**
  * @swagger

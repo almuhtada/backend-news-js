@@ -123,7 +123,7 @@ exports.updateNotificationStatus = async (req, res) => {
     const { id } = req.params;
     const { status, post_status, rejection_reason } = req.body;
 
-    const notification = await Notification.findOne({ where: { uuid: id } });
+    const notification = await Notification.findByPk(id);
 
     if (!notification) {
       return res.status(404).json({
@@ -146,6 +146,7 @@ exports.updateNotificationStatus = async (req, res) => {
           published_at:
             post_status === "publish" ? new Date() : post.published_at,
           rejection_reason: null, // Clear rejection reason when approved
+          editor_id: req.user?.id || post.editor_id, // Editor yang menyetujui
         });
       }
     }
@@ -155,7 +156,7 @@ exports.updateNotificationStatus = async (req, res) => {
       post = await Post.findByPk(notification.post_id);
       if (post) {
         await post.update({
-          status: "draft", // Keep as draft so author can edit and resubmit
+          status: "draft",
           rejection_reason:
             rejection_reason || "Tidak ada alasan yang diberikan",
         });
@@ -195,8 +196,7 @@ exports.updateNotificationStatus = async (req, res) => {
       });
     }
     // Fetch updated notification with post
-    const updatedNotification = await Notification.findOne({
-      where: { uuid: id },
+    const updatedNotification = await Notification.findByPk(id, {
       include: [
         {
           model: Post,

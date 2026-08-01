@@ -53,7 +53,13 @@ class PostService {
       {
         model: User,
         as: "author",
-        attributes: ["id", "username", "email"],
+        attributes: ["id", "uuid", "username", "email", "display_name"],
+      },
+      {
+        model: User,
+        as: "editor",
+        attributes: ["id", "uuid", "username", "email", "display_name"],
+        required: false,
       },
       {
         model: Category,
@@ -68,6 +74,16 @@ class PostService {
         through: { attributes: [] },
       },
     ];
+
+    // Add category filter if specified
+    if (category) {
+      include[2].where = { slug: category };
+    }
+
+    // Add tag filter if specified
+    if (tag) {
+      include[3].where = { slug: tag };
+    }
 
     // Add category filter if specified
     if (category) {
@@ -102,7 +118,13 @@ class PostService {
         {
           model: User,
           as: "author",
-          attributes: ["id", "username", "email"],
+          attributes: ["id", "uuid", "username", "email", "display_name"],
+        },
+        {
+          model: User,
+          as: "editor",
+          attributes: ["id", "uuid", "username", "email", "display_name"],
+          required: false,
         },
         {
           model: Category,
@@ -140,12 +162,12 @@ class PostService {
         {
           model: User,
           as: "author",
-          attributes: ["id", "username", "email", "display_name"],
+          attributes: ["id", "uuid", "username", "email", "display_name"],
         },
         {
           model: User,
           as: "editor",
-          attributes: ["id", "username", "email", "display_name"],
+          attributes: ["id", "uuid", "username", "email", "display_name"],
           required: false,
         },
         {
@@ -202,6 +224,8 @@ class PostService {
       category_ids = [],
       tag_ids = [],
       author_id,
+      author_uuid,
+      editor_uuid,
     } = data;
 
     // Validate required fields
@@ -209,22 +233,40 @@ class PostService {
       throw new BadRequestError("Title and content are required");
     }
 
-    // Use author_id from body or user context, or find an admin
-    let postAuthorId = author_id || (user && user.id);
+    // Penulis: prioritaskan author_uuid (uuid, dipakai admin), lalu user yang login
+    let postAuthorId = null;
     let author = null;
 
-    if (postAuthorId) {
-      author = await User.findByPk(postAuthorId);
+    if (author_uuid) {
+      author = await User.findOne({ where: { uuid: author_uuid } });
+      if (author) postAuthorId = author.id;
+    }
+
+    if (!postAuthorId && author_id) {
+      author = await User.findByPk(author_id);
+      if (author) postAuthorId = author.id;
+    }
+
+    if (!postAuthorId && user && user.id) {
+      author = await User.findByPk(user.id);
+      if (author) postAuthorId = author.id;
     }
 
     // If no valid author, find any administrator
-    if (!author) {
+    if (!postAuthorId) {
       author = await User.findOne({ where: { role: "administrator" } });
       if (author) {
         postAuthorId = author.id;
       } else {
         throw new BadRequestError("No valid author found. Please provide author_id.");
       }
+    }
+
+    // Editor (opsional): resolve dari uuid
+    let postEditorId = null;
+    if (editor_uuid) {
+      const editor = await User.findOne({ where: { uuid: editor_uuid } });
+      if (editor) postEditorId = editor.id;
     }
 
     // Generate unique slug
@@ -260,6 +302,7 @@ class PostService {
       featured_image,
       status,
       author_id: postAuthorId,
+      editor_id: postEditorId,
       published_at: status === "publish" ? new Date() : null,
     });
 
@@ -276,7 +319,17 @@ class PostService {
     // Fetch post with associations
     const createdPost = await Post.findByPk(post.id, {
       include: [
-        { model: User, as: "author", attributes: ["id", "username", "email"] },
+        {
+          model: User,
+          as: "author",
+          attributes: ["id", "uuid", "username", "email", "display_name"],
+        },
+        {
+          model: User,
+          as: "editor",
+          attributes: ["id", "uuid", "username", "email", "display_name"],
+          required: false,
+        },
         { model: Category, as: "categories", through: { attributes: [] } },
         { model: Tag, as: "tags", through: { attributes: [] } },
       ],
@@ -315,9 +368,10 @@ class PostService {
    * Update post
    * @param {number} id
    * @param {object} data
+   * @param {object} user - Authenticated user context (editor)
    * @returns {Promise<Post>}
    */
-  async updatePost(id, data) {
+  async updatePost(id, data, user) {
     const {
       title,
       slug,
@@ -327,6 +381,8 @@ class PostService {
       status,
       category_ids,
       tag_ids,
+      author_uuid,
+      editor_uuid,
     } = data;
 
     const post = await Post.findOne({ where: { uuid: id } });
@@ -334,7 +390,27 @@ class PostService {
       throw new NotFoundError("Post not found");
     }
 
-    // Update post fields
+    // Resolve penulis/editor dari uuid jika admin mengubahnya.
+    // Nilai "none" berarti dikosongkan (editor boleh null, author tetap wajib).
+    let newAuthorId = null;
+    let newEditorId = null;
+    let clearEditor = false;
+    if (author_uuid === "none") {
+      newAuthorId = post.author_id; // author wajib ada, tidak dikosongkan
+    } else if (author_uuid) {
+      const authorUser = await User.findOne({ where: { uuid: author_uuid } });
+      if (authorUser) newAuthorId = authorUser.id;
+    }
+    if (editor_uuid === "none") {
+      clearEditor = true;
+    } else if (editor_uuid) {
+      const editorUser = await User.findOne({ where: { uuid: editor_uuid } });
+      if (editorUser) newEditorId = editorUser.id;
+    }
+
+    // Update post fields. Jika user yang mengedit berbeda dari author,
+    // catat sebagai editor terakhir.
+    const isSameAuthor = user && post.author_id === user.id;
     await post.update({
       title: title || post.title,
       slug: slug || post.slug,
@@ -347,6 +423,14 @@ class PostService {
         status === "publish" && !post.published_at
           ? new Date()
           : post.published_at,
+      author_id: newAuthorId !== null ? newAuthorId : post.author_id,
+      editor_id: clearEditor
+        ? null
+        : newEditorId !== null
+          ? newEditorId
+          : user && !isSameAuthor
+            ? user.id
+            : post.editor_id,
     });
 
     // Update categories if provided
@@ -362,7 +446,17 @@ class PostService {
     // Fetch updated post with associations
     const updatedPost = await Post.findByPk(post.id, {
       include: [
-        { model: User, as: "author", attributes: ["id", "username", "email"] },
+        {
+          model: User,
+          as: "author",
+          attributes: ["id", "uuid", "username", "email", "display_name"],
+        },
+        {
+          model: User,
+          as: "editor",
+          attributes: ["id", "uuid", "username", "email", "display_name"],
+          required: false,
+        },
         { model: Category, as: "categories", through: { attributes: [] } },
         { model: Tag, as: "tags", through: { attributes: [] } },
       ],

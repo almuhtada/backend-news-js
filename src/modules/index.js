@@ -14,6 +14,7 @@ module.exports = [
   require('./telegram'),
   require('./interactions'),
   require('./comments'),
+  require('./moderation'),
   require('./stats'),
   require('./settings'),
   require('./recommendations'),

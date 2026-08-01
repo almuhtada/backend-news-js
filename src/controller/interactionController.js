@@ -466,3 +466,52 @@ exports.deleteSpamComments = async (req, res) => {
     });
   }
 };
+
+/**
+ * Hapus permanen satu komentar beserta seluruh balasannya
+ * DELETE /api/comments/:uuid
+ */
+exports.deleteComment = async (req, res) => {
+  try {
+    const { id: commentUuid } = req.params;
+
+    const comment = await Comment.findOne({ where: { uuid: commentUuid } });
+    if (!comment) {
+      return res.status(404).json({
+        success: false,
+        message: "Komentar tidak ditemukan.",
+      });
+    }
+
+    // Kumpulkan id komentar yang akan dihapus, termasuk semua balasan bertingkat
+    const idsToDelete = [comment.id];
+    const queue = [comment.id];
+
+    while (queue.length) {
+      const parentId = queue.shift();
+      const replies = await Comment.findAll({
+        where: { parent_id: parentId },
+        attributes: ["id"],
+      });
+      for (const reply of replies) {
+        idsToDelete.push(reply.id);
+        queue.push(reply.id);
+      }
+    }
+
+    await Comment.destroy({ where: { id: { [Op.in]: idsToDelete } } });
+
+    return res.json({
+      success: true,
+      message: `${idsToDelete.length} komentar berhasil dihapus permanen.`,
+      data: { deleted: idsToDelete.length },
+    });
+  } catch (error) {
+    console.error("Error deleting comment:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};

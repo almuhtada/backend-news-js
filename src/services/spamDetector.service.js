@@ -4,12 +4,24 @@
 const GAMBLING_KEYWORDS = [
   // Judi umum & Slang Indonesia
   "judi",
+  "judi online",
+  "judi slot",
+  "slot judi",
+  "main judi",
+  "bermain judi",
+  "permainan judi",
+  "daftar judi",
+  "bandar judi",
+  "agen judi",
   "judol",
   "togel",
   "toto",
   "taruhan",
+  "taruhan online",
+  "taruhan bola",
   "bandar",
-  "agen judi",
+  "agen slot",
+  "situs judi online",
   "situs judi",
   "dunia judi",
   "judi bola",
@@ -31,6 +43,11 @@ const GAMBLING_KEYWORDS = [
   "slot demo",
   "bocoran slot",
   "pola slot",
+  "game slot",
+  "permainan slot",
+  "main slot",
+  "bermain slot",
+  "mesin slot",
   "kakek zeus",
   "anti rungkad",
   "rungkad",
@@ -55,11 +72,12 @@ const GAMBLING_KEYWORDS = [
   "garansi kekalahan",
   "situs gacor",
   "link gacor",
+  "gacor",
   "gacor abis",
   "slotgacor",
   "slotonline",
 
-  // Game & Kasino
+  // Game & Kasino (Indonesia)
   "poker",
   "casino",
   "kasino",
@@ -84,6 +102,7 @@ const GAMBLING_KEYWORDS = [
   // Provider & Game terkenal
   "pragmatic",
   "pragmatic play",
+  "pragmatik",
   "pg soft",
   "pgsoft",
   "habanero",
@@ -127,7 +146,71 @@ const GAMBLING_KEYWORDS = [
   "gabung di",
   "pasti dibayar",
   "daftar gratis",
+
+  // Istilah judi Bahasa Inggris (substring aman / frasa panjang)
+  "online casino",
+  "casino online",
+  "casino games",
+  "casino game",
+  "gambling",
+  "gambling site",
+  "gambling sites",
+  "gambling online",
+  "online gambling",
+  "slot machine",
+  "slot machines",
+  "slot games",
+  "slot game",
+  "online slots",
+  "betting",
+  "betting site",
+  "betting sites",
+  "betting online",
+  "online betting",
+  "sports betting",
+  "sportsbook",
+  "bookmaker",
+  "jackpot",
+  "jackpot slots",
+  "online casino games",
 ];
+
+/**
+ * Kata pendek Bahasa Inggris yang hanya cocok bila berdiri sendiri
+ * (word boundary) untuk menghindari false positive, contoh:
+ * "bet" di "betul"/"alphabet", "stake" di "stakeholder".
+ */
+const GAMBLING_WORDS = [
+  "gamble",
+  "gambles",
+  "gambled",
+  "gambling",
+  "gambler",
+  "gamblers",
+  "wager",
+  "wagers",
+  "wagering",
+  "bet",
+  "bets",
+  "betting",
+  "bettor",
+  "bettors",
+  "bookmaker",
+  "bookmakers",
+  "bookie",
+  "bookies",
+  "jackpot",
+  "jackpots",
+  "odds",
+  "stake",
+  "stakes",
+  "staking",
+];
+
+const GAMBLING_WORD_REGEX = new RegExp(
+  `\\b(${GAMBLING_WORDS.join("|")})\\b`,
+  "gi"
+);
 
 /**
  * Regex pattern untuk mendeteksi nama platform/domain judi yang disamarkan:
@@ -203,6 +286,10 @@ function detectGambling(text) {
       originalText.toLowerCase().includes(kw) || normalizedText.includes(kw)
   );
 
+  // 1b. Cek kata pendek Bahasa Inggris (word boundary) pada teks ternormalisasi
+  const normalizedMatches = normalizedText.match(GAMBLING_WORD_REGEX) || [];
+  const matchedWords = [...new Set(normalizedMatches.map((w) => w.toLowerCase()))];
+
   // 2. Cek regex pattern pada teks original & teks ternormalisasi
   const matchedPatterns = [];
   GAMBLING_PATTERNS.forEach((re) => {
@@ -211,7 +298,9 @@ function detectGambling(text) {
     }
   });
 
-  const allMatched = [...new Set([...matchedKeywords, ...matchedPatterns])];
+  const allMatched = [
+    ...new Set([...matchedKeywords, ...matchedWords, ...matchedPatterns]),
+  ];
 
   return {
     isSpam: allMatched.length > 0,

@@ -15,11 +15,11 @@ exports.getAllTags = async (req, res) => {
     }
 
     const tags = await sequelize.query(
-      `SELECT t.id, t.name, t.slug, t.description,
+      `SELECT t.id, t.uuid, t.name, t.slug, t.description,
               COUNT(DISTINCT pt.post_id) AS post_count
        FROM tags t
        LEFT JOIN post_tags pt ON pt.tag_id = t.id
-       GROUP BY t.id, t.name, t.slug, t.description
+       GROUP BY t.id, t.uuid, t.name, t.slug, t.description
        ORDER BY t.name ASC`,
       { type: sequelize.QueryTypes.SELECT }
     );
@@ -32,6 +32,30 @@ exports.getAllTags = async (req, res) => {
   } catch (error) {
     console.error("Error getting tags:", error);
     res.status(500).json({ success: false, message: "Error fetching tags", error: error.message });
+  }
+};
+
+// Get most used tags (sorted by post_count)
+exports.getPopularTags = async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 10, 50);
+
+    const tags = await sequelize.query(
+      `SELECT t.id, t.uuid, t.name, t.slug,
+              COUNT(DISTINCT pt.post_id) AS post_count
+       FROM tags t
+       LEFT JOIN post_tags pt ON pt.tag_id = t.id
+       GROUP BY t.id, t.uuid, t.name, t.slug
+       ORDER BY post_count DESC, t.name ASC
+       LIMIT :limit`,
+      { type: sequelize.QueryTypes.SELECT, replacements: { limit } }
+    );
+
+    const result = tags.map((t) => ({ ...t, post_count: Number(t.post_count) || 0 }));
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error("Error getting popular tags:", error);
+    res.status(500).json({ success: false, message: "Error fetching popular tags", error: error.message });
   }
 };
 

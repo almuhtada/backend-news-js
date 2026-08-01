@@ -30,8 +30,8 @@ exports.createCategory = asyncHandler(async (req, res) => {
  * Update category
  */
 exports.updateCategory = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const category = await categoryService.updateCategory(id, req.body);
+  const { uuid } = req.params;
+  const category = await categoryService.updateCategory(uuid, req.body);
   return ok(res, category, "Category updated successfully");
 });
 
@@ -39,8 +39,8 @@ exports.updateCategory = asyncHandler(async (req, res) => {
  * Delete category
  */
 exports.deleteCategory = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  await categoryService.deleteCategory(id);
+  const { uuid } = req.params;
+  await categoryService.deleteCategory(uuid);
   return ok(res, null, "Category deleted successfully");
 });
 
