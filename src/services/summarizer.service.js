@@ -14,12 +14,10 @@ function getGroqClient() {
 exports.generateSummary = async (content) => {
   // Jika tidak ada API key, gunakan fallback
   if (!process.env.GROQ_API_KEY) {
-    console.log("GROQ_API_KEY not found, using fallback");
     return fallbackSummarize(content);
   }
 
   try {
-    console.log("Calling Groq API...");
     const groq = getGroqClient();
 
     const response = await groq.chat.completions.create({
@@ -49,7 +47,6 @@ Ringkasan:`,
     });
 
     const summary = response.choices[0].message.content.trim();
-    console.log("Groq API success, summary length:", summary.length);
     return summary;
   } catch (error) {
     console.error("Groq API error:", error.message);
@@ -59,7 +56,6 @@ Ringkasan:`,
 
 // Fallback jika API gagal
 function fallbackSummarize(text) {
-  console.log("Using fallback summarizer");
   const cleaned = text.replace(/\s+/g, " ").trim();
   const sentences = cleaned.split(/(?<=[.!?])\s+/).filter((s) => s.length > 20);
   const selected = sentences.slice(0, 3);

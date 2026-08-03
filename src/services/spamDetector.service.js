@@ -1,215 +1,11 @@
-/**
- * Daftar kata kunci konten judi/spam slot online yang umum beredar di Indonesia
- */
-const GAMBLING_KEYWORDS = [
-  // Judi umum & Slang Indonesia
-  "judi",
-  "judi online",
-  "judi slot",
-  "slot judi",
-  "main judi",
-  "bermain judi",
-  "permainan judi",
-  "daftar judi",
-  "bandar judi",
-  "agen judi",
-  "judol",
-  "togel",
-  "toto",
-  "taruhan",
-  "taruhan online",
-  "taruhan bola",
-  "bandar",
-  "agen slot",
-  "situs judi online",
-  "situs judi",
-  "dunia judi",
-  "judi bola",
-  "jud1",
-
-  // Slot & Gacor terms
-  "slot",
-  "slot online",
-  "slot gacor",
-  "slot maxwin",
-  "slot88",
-  "situs slot",
-  "daftar slot",
-  "link slot",
-  "rtp slot",
-  "slot terpercaya",
-  "slot terbaik",
-  "slot hari ini",
-  "slot demo",
-  "bocoran slot",
-  "pola slot",
-  "game slot",
-  "permainan slot",
-  "main slot",
-  "bermain slot",
-  "mesin slot",
-  "kakek zeus",
-  "anti rungkad",
-  "rungkad",
-  "rungkat",
-  "pasti jp",
-  "gampang jp",
-  "maxwin",
-  "sensasional jp",
-  "pecah kepala",
-  "scatter hitam",
-  "scatter merah",
-  "scaters",
-  "free spin",
-  "freespin",
-  "akun pro",
-  "akun vip",
-  "modal receh",
-  "depo",
-  "wd",
-  "deposit",
-  "withdraw",
-  "garansi kekalahan",
-  "situs gacor",
-  "link gacor",
-  "gacor",
-  "gacor abis",
-  "slotgacor",
-  "slotonline",
-
-  // Game & Kasino (Indonesia)
-  "poker",
-  "casino",
-  "kasino",
-  "baccarat",
-  "roulette",
-  "domino",
-  "dominoqq",
-  "ceme",
-  "capsa",
-  "sakong",
-  "pkv",
-  "pkv games",
-  "qqpoker",
-  "sbobet",
-  "maxbet",
-  "ibcbet",
-  "1xbet",
-  "bola tangkas",
-  "sportbook",
-  "live casino",
-
-  // Provider & Game terkenal
-  "pragmatic",
-  "pragmatic play",
-  "pragmatik",
-  "pg soft",
-  "pgsoft",
-  "habanero",
-  "joker123",
-  "joker388",
-  "spadegaming",
-  "microgaming",
-  "playtech",
-  "evoplay",
-  "gates of olympus",
-  "sweet bonanza",
-  "starlight princess",
-  "mahjong ways",
-  "mahjong",
-  "wild west gold",
-  "zeus",
-  "aztec gems",
-  "lucky neko",
-  "sugar rush",
-  "koi gate",
-  "hot hot fruit",
-
-  // Promosi & Uang
-  "bonus deposit",
-  "bonus new member",
-  "cashback",
-  "gacor hari ini",
-  "minimal deposit",
-  "depo 10rb",
-  "depo 25rb",
-  "deposit pulsa",
-  "tanpa potongan",
-  "menang berapapun dibayar",
-  "proses cepat",
-  "aman terpercaya",
-
-  // Call to Action (Ajakan)
-  "klik link",
-  "klik profil",
-  "daftar di",
-  "gabung di",
-  "pasti dibayar",
-  "daftar gratis",
-
-  // Istilah judi Bahasa Inggris (substring aman / frasa panjang)
-  "online casino",
-  "casino online",
-  "casino games",
-  "casino game",
-  "gambling",
-  "gambling site",
-  "gambling sites",
-  "gambling online",
-  "online gambling",
-  "slot machine",
-  "slot machines",
-  "slot games",
-  "slot game",
-  "online slots",
-  "betting",
-  "betting site",
-  "betting sites",
-  "betting online",
-  "online betting",
-  "sports betting",
-  "sportsbook",
-  "bookmaker",
-  "jackpot",
-  "jackpot slots",
-  "online casino games",
-];
-
-/**
- * Kata pendek Bahasa Inggris yang hanya cocok bila berdiri sendiri
- * (word boundary) untuk menghindari false positive, contoh:
- * "bet" di "betul"/"alphabet", "stake" di "stakeholder".
- */
-const GAMBLING_WORDS = [
-  "gamble",
-  "gambles",
-  "gambled",
-  "gambling",
-  "gambler",
-  "gamblers",
-  "wager",
-  "wagers",
-  "wagering",
-  "bet",
-  "bets",
-  "betting",
-  "bettor",
-  "bettors",
-  "bookmaker",
-  "bookmakers",
-  "bookie",
-  "bookies",
-  "jackpot",
-  "jackpots",
-  "odds",
-  "stake",
-  "stakes",
-  "staking",
-];
+const {
+  GAMBLING_KEYWORDS,
+  GAMBLING_WORDS,
+} = require("../utils/gamblingKeyword");
 
 const GAMBLING_WORD_REGEX = new RegExp(
   `\\b(${GAMBLING_WORDS.join("|")})\\b`,
-  "gi"
+  "gi",
 );
 
 /**
@@ -221,7 +17,11 @@ const GAMBLING_PATTERNS = [
   // Nama platform diikuti angka: plataformawin656, royalwin123
   /\b[a-z]{3,}(win|bet|slot|play|cash|spin|rich|jp|max)\d{2,}\b/i,
   // Domain dengan angka: nama123.com, nama88.net
-  /\b[a-z]+(88|99|777|365|4d|303|138|168|189|368|388|508|789|118|888|999)\b/i,
+  /\b[a-z]+(88|99|777|365|4d|303|138|168|189|368|388|508|789|118|888|999|212|5000|7777|8888)\b/i,
+  // Kata judi diikuti angka slot populer (slot 777, gacor 888, dll)
+  /\b(slot|slots|gacor|jackpot|togel|casino|qq|pkv|poker|situs)[\s-]?[- -]?\s?(777|888|999|666|555|7777|8888|9999|5000|500)\b/i,
+  // Slot m angka populer berdiri sendiri
+  /\bslot\s*(777|888|999|1000|5000|500|77|88|99)\b/i,
   // Pola tautan IP Address langsung (sering digunakan situs judi untuk menghindari blokir DNS)
   /\bhttps?:\/\/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/i,
   // Tautan shortener yang sering digunakan untuk spam slot
@@ -241,14 +41,21 @@ const GAMBLING_PATTERNS = [
  * 1. Mengubah ke lowercase.
  * 2. Menghapus karakter pemisah khusus seperti titik, strip, garis bawah, bintang (contoh: s.l.o.t -> slot).
  * 3. Mengubah karakter leetspeak / homoglyph (0 -> o, 3 -> e, 4 -> a, 1 -> i, 5 -> s, @ -> a, $ -> s).
+ * @param {string} text
+ * @param {boolean} removeSpaces - Jika true, hapus juga semua spasi (untuk tangkap "s l o t" -> "slot")
  */
-function normalizeText(text) {
+function normalizeText(text, removeSpaces = false) {
   if (!text) return "";
 
   let normalized = text.toLowerCase();
 
   // Bersihkan pemisah yang biasa disisipkan di antara huruf
-  normalized = normalized.replace(/[\.\-_\*\/\\|]/g, "");
+  normalized = normalized.replace(/[.\-_*/\\|]/g, "");
+
+  // Opsional: hapus semua spasi (untuk menangkap trik spammer seperti "s l o t", "j u d i")
+  if (removeSpaces) {
+    normalized = normalized.replace(/\s+/g, "");
+  }
 
   // Kamus konversi leetspeak
   const leetMap = {
@@ -271,29 +78,43 @@ function normalizeText(text) {
 
 /**
  * Cek apakah teks mengandung kata kunci atau pola judi online
+ * Scan pada 3 versi teks:
+ *   - originalText (lowercase)
+ *   - normalizedText (leetspeak + pemisah dihapus, spasi tetap)
+ *   - collapsedText (semua spasi juga dihapus, untuk tangkap "s l o t" dll)
  * @param {string} text
  * @returns {{ isSpam: boolean, matchedKeywords: string[] }}
  */
 function detectGambling(text) {
   if (!text) return { isSpam: false, matchedKeywords: [] };
 
-  const originalText = text;
-  const normalizedText = normalizeText(text);
+  const originalLower = text.toLowerCase();
+  const normalizedText = normalizeText(text, false);
+  const collapsedText = normalizeText(text, true);
 
-  // 1. Cek keyword statis pada teks original & teks ternormalisasi
-  const matchedKeywords = GAMBLING_KEYWORDS.filter(
-    (kw) =>
-      originalText.toLowerCase().includes(kw) || normalizedText.includes(kw)
-  );
+  // 1. Cek keyword statis pada 3 versi teks
+  const matchedKeywords = GAMBLING_KEYWORDS.filter((kw) => {
+    const kwNoSpaces = kw.replace(/\s+/g, "");
+    return (
+      originalLower.includes(kw) ||
+      normalizedText.includes(kw) ||
+      collapsedText.includes(kwNoSpaces)
+    );
+  });
 
   // 1b. Cek kata pendek Bahasa Inggris (word boundary) pada teks ternormalisasi
   const normalizedMatches = normalizedText.match(GAMBLING_WORD_REGEX) || [];
-  const matchedWords = [...new Set(normalizedMatches.map((w) => w.toLowerCase()))];
+  const collapsedMatches = collapsedText.match(GAMBLING_WORD_REGEX) || [];
+  const matchedWords = [
+    ...new Set(
+      [...normalizedMatches, ...collapsedMatches].map((w) => w.toLowerCase()),
+    ),
+  ];
 
   // 2. Cek regex pattern pada teks original & teks ternormalisasi
   const matchedPatterns = [];
   GAMBLING_PATTERNS.forEach((re) => {
-    if (re.test(originalText) || re.test(normalizedText)) {
+    if (re.test(text) || re.test(normalizedText) || re.test(collapsedText)) {
       matchedPatterns.push(re.source.substring(0, 30) + "…");
     }
   });

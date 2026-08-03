@@ -6,6 +6,7 @@ const RefreshToken = require("../schema/refreshToken");
 const sequelize = require("../config/database");
 const { Op } = require("sequelize");
 const { BadRequestError, NotFoundError } = require("../utils");
+const securityAlert = require("./securityAlert.service");
 
 const REFRESH_TOKEN_EXPIRY_MS =
   (parseInt(process.env.REFRESH_TOKEN_EXPIRY_DAYS, 10) || 7) *
@@ -64,12 +65,14 @@ class AuthService {
     });
 
     if (!user) {
+      securityAlert.recordFailedLogin({ headers: {}, ip: identifier }, identifier);
       throw new BadRequestError("Invalid credentials");
     }
 
     // Check password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
+      securityAlert.recordFailedLogin({ headers: {}, ip: identifier }, identifier);
       throw new BadRequestError("Invalid credentials");
     }
 
@@ -95,6 +98,9 @@ class AuthService {
       user_id: user.id,
       expires_at: new Date(Date.now() + REFRESH_TOKEN_EXPIRY_MS),
     });
+
+    // Reset counter login gagal untuk IP ini
+    securityAlert.resetFailedLogin(user.username);
 
     return {
       token,

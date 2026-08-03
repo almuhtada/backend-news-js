@@ -123,7 +123,12 @@ exports.updateNotificationStatus = async (req, res) => {
     const { id } = req.params;
     const { status, post_status, rejection_reason } = req.body;
 
-    const notification = await Notification.findByPk(id);
+    // Frontend mengirim uuid, kadang juga id numerik. Duk kedua-duanya.
+    const notification = await Notification.findOne({
+      where: {
+        [Op.or]: [{ id }, { uuid: id }],
+      },
+    });
 
     if (!notification) {
       return res.status(404).json({

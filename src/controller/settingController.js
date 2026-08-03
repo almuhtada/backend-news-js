@@ -12,6 +12,7 @@ const defaultSettings = [
   { key: "site_name", value: "", group: "general", label: "Nama Website", type: "text" },
   { key: "tagline", value: "", group: "general", label: "Tagline", type: "text" },
   { key: "description", value: "", group: "general", label: "Deskripsi Website", type: "textarea" },
+  { key: "journal_link", value: "https://ijissjournal.org/index.php/journal", group: "general", label: "Link Jurnal IJISS", type: "url" },
 
   // Contact
   { key: "email", value: "", group: "contact", label: "Email", type: "email" },
@@ -32,9 +33,17 @@ const getAllSettings = async (req, res) => {
       order: [["group", "ASC"], ["id", "ASC"]],
     });
 
-    // If no settings exist, seed with defaults
-    if (settings.length === 0) {
-      await Setting.bulkCreate(defaultSettings);
+    // Seed missing default settings
+    let missingAdded = false;
+    for (const def of defaultSettings) {
+      const exists = settings.some(s => s.key === def.key);
+      if (!exists) {
+        await Setting.create(def);
+        missingAdded = true;
+      }
+    }
+
+    if (missingAdded) {
       settings = await Setting.findAll({
         order: [["group", "ASC"], ["id", "ASC"]],
       });
@@ -175,6 +184,7 @@ const saveAllSettings = async (req, res) => {
       { key: "site_name", value: formData.siteName, group: "general", label: "Nama Website", type: "text" },
       { key: "tagline", value: formData.tagline, group: "general", label: "Tagline", type: "text" },
       { key: "description", value: formData.description, group: "general", label: "Deskripsi Website", type: "textarea" },
+      { key: "journal_link", value: formData.journalLink, group: "general", label: "Link Jurnal IJISS", type: "url" },
       { key: "email", value: formData.email, group: "contact", label: "Email", type: "email" },
       { key: "phone", value: formData.phone, group: "contact", label: "Telepon", type: "text" },
       { key: "address", value: formData.address, group: "contact", label: "Alamat", type: "textarea" },

@@ -4,6 +4,18 @@ REST API untuk platform berita **Al-Muhtada** dibangun dengan Express.js, Sequel
 
 ---
 
+## 📖 Dokumentasi Lengkap
+
+Lihat **[DOCS_BE.md](DOCS_BE.md)** untuk dokumentasi detail:
+- Struktur folder & arsitektur
+- Semua endpoint API
+- Sistem keamanan (Spam Shield, File Integrity, Security Alerts)
+- Autentikasi JWT + Refresh Token
+- Environment variables lengkap
+- Swagger, Testing, Deploy PM2
+
+---
+
 ## Tech Stack
 
 | Layer | Library |

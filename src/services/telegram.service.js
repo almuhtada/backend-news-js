@@ -2,26 +2,38 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const TOPIC_PENULIS = process.env.TELEGRAM_TOPIC_PENULIS;
 const TOPIC_EDITOR = process.env.TELEGRAM_TOPIC_EDITOR;
+const TOPIC_SPAM = process.env.TELEGRAM_TOPIC_SPAM;
 
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
 // Escape special characters for Telegram MarkdownV2
 function escapeMarkdown(text) {
   if (!text) return "";
-  return text.replace(/[_*\[\]()~`>#+\-=|{}.!\\]/g, "\\$&");
+  return text.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, "\\$&");
+}
+
+// Escape HTML untuk mode parse_mode=HTML
+// Mencegah pesan rusak jika konten user mengandung <, >, &, dll.
+function escapeHtml(text) {
+  if (text === null || text === undefined) return "";
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 async function sendTelegramMessage({ topic, text, useHtml = false }) {
-  const topicId = topic === "PENULIS" ? TOPIC_PENULIS : TOPIC_EDITOR;
+  let topicId;
+  if (topic === "PENULIS") {
+    topicId = TOPIC_PENULIS;
+  } else if (topic === "SPAM") {
+    topicId = TOPIC_SPAM;
+  } else {
+    topicId = TOPIC_EDITOR;
+  }
   const isForumChat = String(CHAT_ID || "").startsWith("-100");
-
-  console.log("[Telegram] Config:", {
-    hasBotToken: !!BOT_TOKEN,
-    chatId: CHAT_ID,
-    topic,
-    topicId,
-    isForumChat,
-  });
 
   if (!BOT_TOKEN || !CHAT_ID) {
     throw new Error(
@@ -52,8 +64,6 @@ async function sendTelegramMessage({ topic, text, useHtml = false }) {
     payload.parse_mode = "HTML";
   }
 
-  console.log("[Telegram] Mengirim payload:", JSON.stringify(payload));
-
   const response = await fetch(`${TELEGRAM_API}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -67,8 +77,7 @@ async function sendTelegramMessage({ topic, text, useHtml = false }) {
     throw new Error(data.description || "Telegram API error");
   }
 
-  console.log("[Telegram] Pesan berhasil dikirim, message_id:", data.result?.message_id);
   return data;
 }
 
-module.exports = { sendTelegramMessage, escapeMarkdown };
+module.exports = { sendTelegramMessage, escapeMarkdown, escapeHtml };

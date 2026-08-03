@@ -1,5 +1,6 @@
 const authService = require("../services/auth.service");
 const { ok, created, asyncHandler } = require("../utils");
+const securityAlert = require("../services/securityAlert.service");
 
 /**
  * Register a new user
@@ -14,6 +15,13 @@ const register = asyncHandler(async (req, res) => {
  */
 const login = asyncHandler(async (req, res) => {
   const result = await authService.login(req.body);
+
+  // Alert ke Telegram saat ada login ke panel (admin/editor) agar
+  // admin tahu jika ada yang masuk ke akun dari luar.
+  if (result?.user) {
+    securityAlert.notifyAdminLogin(req, result.user);
+  }
+
   return ok(res, result, "Login successful");
 });
 

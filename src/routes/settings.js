@@ -57,6 +57,8 @@ router.post("/initialize", authenticate, authorize("administrator"), initializeS
  *                 type: string
  *               description:
  *                 type: string
+ *               journalLink:
+ *                 type: string
  *               email:
  *                 type: string
  *               phone:
