@@ -41,8 +41,9 @@ function getClientIp(req) {
  * Format bersih, minimal emoji, mudah dibaca.
  * @param {string} title - Judul alert
  * @param {string} body - Isi (sudah di-escape jika perlu)
+ * @param {string} topic - Topic Telegram: "SPAM" | "LOGIN_HISTORY"
  */
-function sendAlert(title, body) {
+function sendAlert(title, body, topic = "SPAM") {
   const waktu = new Date().toLocaleString("id-ID", {
     timeZone: "Asia/Jakarta",
     day: "2-digit",
@@ -61,7 +62,7 @@ function sendAlert(title, body) {
 
   // Kirim ke telegram (non-block). Tidak menggagalkan operasi apapun.
   return sendTelegramMessage({
-    topic: "SPAM",
+    topic,
     useHtml: true,
     text,
   }).catch((err) =>
@@ -105,6 +106,7 @@ function notifyAdminLogin(req, user) {
       `<code>Role</code>       ${escapeHtml(user?.role || "user")}\n` +
       `<code>IP</code>         ${escapeHtml(String(ip))}\n` +
       `<code>Device</code>     ${escapeHtml(ua.length > 40 ? ua.slice(0, 40) + "…" : ua)}`,
+    "LOGIN_HISTORY",
   );
 }
 

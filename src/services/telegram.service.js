@@ -3,6 +3,7 @@ const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const TOPIC_PENULIS = process.env.TELEGRAM_TOPIC_PENULIS;
 const TOPIC_EDITOR = process.env.TELEGRAM_TOPIC_EDITOR;
 const TOPIC_SPAM = process.env.TELEGRAM_TOPIC_SPAM;
+const TOPIC_LOGIN_HISTORY = process.env.TELEGRAM_TOPIC_LOGIN_HISTORY;
 
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
@@ -30,6 +31,8 @@ async function sendTelegramMessage({ topic, text, useHtml = false }) {
     topicId = TOPIC_PENULIS;
   } else if (topic === "SPAM") {
     topicId = TOPIC_SPAM;
+  } else if (topic === "LOGIN_HISTORY") {
+    topicId = TOPIC_LOGIN_HISTORY;
   } else {
     topicId = TOPIC_EDITOR;
   }
