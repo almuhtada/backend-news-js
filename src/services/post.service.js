@@ -85,16 +85,6 @@ class PostService {
       include[3].where = { slug: tag };
     }
 
-    // Add category filter if specified
-    if (category) {
-      include[1].where = { slug: category };
-    }
-
-    // Add tag filter if specified
-    if (tag) {
-      include[2].where = { slug: tag };
-    }
-
     const { count, rows: posts } = await Post.findAndCountAll({
       where,
       include,
