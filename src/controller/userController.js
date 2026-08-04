@@ -126,7 +126,7 @@ const updateUser = async (req, res) => {
 
     // Revoke all refresh tokens if password changed
     if (password && password.trim()) {
-      await authService.revokeAllUserTokens(id);
+      await authService.revokeAllUserTokens(user.id);
     }
 
     // Remove password from response
