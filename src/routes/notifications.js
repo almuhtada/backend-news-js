@@ -186,7 +186,7 @@ router.post("/", authenticate, notificationController.createNotification);
 router.put(
   "/:id/status",
   authenticate,
-  authorize("admin", "editor"),
+  authorize("administrator", "admin", "editor"),
   notificationController.updateNotificationStatus,
 );
 
@@ -213,6 +213,6 @@ router.put(
  *       500:
  *         description: Server error
  */
-router.delete("/:id", authenticate, authorize("admin", "editor"), notificationController.deleteNotification);
+router.delete("/:id", authenticate, authorize("administrator", "admin", "editor"), notificationController.deleteNotification);
 
 module.exports = router;
