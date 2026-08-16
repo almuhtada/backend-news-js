@@ -40,6 +40,7 @@ const allowedOrigins = process.env.CORS_ORIGINS
       "http://localhost:3000",
       "http://localhost:5173",
       "http://192.168.100.76:5173",
+      "https://192.168.100.76:5173",
       "https://dashboard.almuhtada.org",
       "https://almuhtada.org",
       "https://www.almuhtada.org",

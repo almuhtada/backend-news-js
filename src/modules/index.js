@@ -1,4 +1,5 @@
 module.exports = [
+  require('./home'),
   require('./auth'),
   require('./posts'),
   require('./categories'),
