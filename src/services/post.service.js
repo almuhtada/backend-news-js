@@ -30,6 +30,7 @@ class PostService {
       category,
       tag,
       search,
+      exclude,
       sort = "published_at",
       order = "DESC",
     } = query;
@@ -46,6 +47,15 @@ class PostService {
         { title: { [Op.like]: `%${search}%` } },
         { content: { [Op.like]: `%${search}%` } },
       ];
+    }
+    if (exclude) {
+      const excludedIds = String(exclude)
+        .split(",")
+        .map((id) => Number.parseInt(id, 10))
+        .filter(Number.isInteger);
+      if (excludedIds.length > 0) {
+        where.id = { [Op.notIn]: excludedIds };
+      }
     }
 
     // Build include array
