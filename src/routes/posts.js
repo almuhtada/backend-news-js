@@ -1,7 +1,7 @@
 const express = require("express");
 const {
   getAllPosts,
-  getPostById,
+  getPostByUuid,
   getPostBySlug,
   createPost,
   updatePost,
@@ -205,17 +205,18 @@ router.get("/recent", getRecentPosts);
 
 /**
  * @swagger
- * /api/posts/id/{id}:
+ * /api/posts/uuid/{uuid}:
  *   get:
  *     summary: Get post by ID
  *     tags: [Posts]
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: uuid
  *         required: true
  *         schema:
- *           type: integer
- *         description: Post ID
+ *           type: string
+ *           format: uuid
+ *         description: Public post UUID
  *     responses:
  *       200:
  *         description: Post retrieved successfully
@@ -224,7 +225,7 @@ router.get("/recent", getRecentPosts);
  *       500:
  *         description: Server error
  */
-router.get("/id/:id", getPostById);
+router.get("/uuid/:uuid", getPostByUuid);
 
 /**
  * @swagger

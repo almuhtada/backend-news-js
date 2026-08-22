@@ -108,12 +108,13 @@ class PostService {
   }
 
   /**
-   * Get single post by ID
-   * @param {number} id
+   * Get a post by its public UUID.
+   * @param {string} uuid
    * @returns {Promise<Post>}
    */
-  async getPostById(id) {
-    const post = await Post.findOne({ where: { uuid: id } }, {
+  async getPostByUuid(uuid) {
+    const post = await Post.findOne({
+      where: { uuid },
       include: [
         {
           model: User,

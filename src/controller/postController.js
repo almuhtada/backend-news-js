@@ -19,11 +19,11 @@ exports.getAllPosts = asyncHandler(async (req, res) => {
 });
 
 /**
- * Get single post by ID
+ * Get single post by UUID
  */
-exports.getPostById = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const post = await postService.getPostById(id);
+exports.getPostByUuid = asyncHandler(async (req, res) => {
+  const { uuid } = req.params;
+  const post = await postService.getPostByUuid(uuid);
   return ok(res, post, "Post retrieved successfully");
 });
 

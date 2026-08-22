@@ -35,12 +35,23 @@ exports.getAllNotifications = async (req, res) => {
 
     const { count, rows: notifications } = await Notification.findAndCountAll({
       where,
+      attributes: {
+        exclude: ["id", "post_id"],
+      },
       include: [
         {
           model: Post,
           as: "post",
-          attributes: ["id", "title", "slug", "featured_image", "status"],
+          attributes: ["id", "uuid", "title", "slug", "featured_image", "status"],
           required: false,
+          include: [
+            {
+              model: User,
+              as: "author",
+              attributes: ["id", "uuid", "username", "email", "display_name"],
+              required: false,
+            },
+          ],
         },
       ],
       limit: parseInt(limit),
@@ -78,8 +89,19 @@ exports.createNotification = async (req, res) => {
       description,
       priority = "medium",
       category = "news",
-      post_id,
+      post_uuid,
     } = req.body;
+
+    const post = post_uuid
+      ? await Post.findOne({ where: { uuid: post_uuid } })
+      : null;
+
+    if (post_uuid && !post) {
+      return res.status(404).json({
+        success: false,
+        message: "Post not found",
+      });
+    }
 
     const notification = await Notification.create({
       user_name,
@@ -89,16 +111,27 @@ exports.createNotification = async (req, res) => {
       description,
       priority,
       category,
-      post_id,
+      post_id: post?.id,
     });
 
     // Include post data in response if post_id exists
     const createdNotification = await Notification.findByPk(notification.id, {
+      attributes: {
+        exclude: ["id", "post_id"],
+      },
       include: [
         {
           model: Post,
           as: "post",
-          attributes: ["id", "title", "slug", "featured_image", "status"],
+          attributes: ["id", "uuid", "title", "slug", "featured_image", "status"],
+          include: [
+            {
+              model: User,
+              as: "author",
+              attributes: ["id", "uuid", "username", "email", "display_name"],
+              required: false,
+            },
+          ],
         },
       ],
     });
