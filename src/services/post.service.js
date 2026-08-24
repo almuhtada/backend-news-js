@@ -2,7 +2,7 @@ const { Post, User, Category, Tag, Notification } = require("../schema");
 const { Op } = require("sequelize");
 const { generateSummary } = require("./summarizer.service");
 const { sendTelegramMessage } = require("./telegram.service");
-const { NotFoundError, BadRequestError } = require("../utils");
+const { NotFoundError, BadRequestError, ForbiddenError } = require("../utils");
 const { parsePagination } = require("../utils");
 const recommendationService = require("./recommendation.service");
 
@@ -221,7 +221,6 @@ class PostService {
       content,
       excerpt,
       featured_image,
-      status = "draft",
       category_ids = [],
       tag_ids = [],
       author_id,
@@ -259,7 +258,9 @@ class PostService {
       if (author) {
         postAuthorId = author.id;
       } else {
-        throw new BadRequestError("No valid author found. Please provide author_id.");
+        throw new BadRequestError(
+          "No valid author found. Please provide author_id.",
+        );
       }
     }
 
@@ -292,6 +293,10 @@ class PostService {
       console.error("Summary generation failed:", err);
       summary = excerpt || null; // fallback
     }
+
+    // New posts stay as drafts until an editor approves their notification.
+    // Always start as draft regardless of user selection - requires editor approval to publish
+    const status = "draft";
 
     // Create post
     const post = await Post.create({
@@ -389,6 +394,14 @@ class PostService {
     const post = await Post.findOne({ where: { uuid: id } });
     if (!post) {
       throw new NotFoundError("Post not found");
+    }
+
+    if (
+      status !== undefined &&
+      status !== post.status &&
+      user?.role !== "administrator"
+    ) {
+      throw new ForbiddenError("Only administrators can change post status");
     }
 
     // Resolve penulis/editor dari uuid jika admin mengubahnya.
@@ -576,13 +589,13 @@ class PostService {
       ],
       [
         sequelize.literal(
-          `(SELECT COUNT(*) FROM post_likes WHERE post_likes.post_id = Post.id)`
+          `(SELECT COUNT(*) FROM post_likes WHERE post_likes.post_id = Post.id)`,
         ),
         "likes_count",
       ],
       [
         sequelize.literal(
-          `(SELECT COUNT(*) FROM comments WHERE comments.post_id = Post.id AND comments.status = 'approved')`
+          `(SELECT COUNT(*) FROM comments WHERE comments.post_id = Post.id AND comments.status = 'approved')`,
         ),
         "comments_count",
       ],

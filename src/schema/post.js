@@ -51,7 +51,7 @@ const Post = sequelize.define(
       allowNull: true,
     },
     status: {
-      type: DataTypes.ENUM("publish", "draft", "pending", "trash"),
+      type: DataTypes.ENUM("publish", "draft", "archived"),
       defaultValue: "draft",
     },
     published_at: {
