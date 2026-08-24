@@ -167,7 +167,7 @@ const swaggerOptions = {
             },
             status: {
               type: "string",
-              enum: ["publish", "draft", "pending"],
+              enum: ["draft", "publish", "archived"],
               description: "Post status",
             },
             featured_image: {

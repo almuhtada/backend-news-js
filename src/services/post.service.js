@@ -5,6 +5,7 @@ const { sendTelegramMessage } = require("./telegram.service");
 const { NotFoundError, BadRequestError, ForbiddenError } = require("../utils");
 const { parsePagination } = require("../utils");
 const recommendationService = require("./recommendation.service");
+const VALID_STATUSES = ["draft", "publish", "archived"];
 
 class PostService {
   /**
@@ -390,6 +391,13 @@ class PostService {
       author_uuid,
       editor_uuid,
     } = data;
+
+    // Validate status value if provided
+    if (status && !VALID_STATUSES.includes(status)) {
+      throw new BadRequestError(
+        `Invalid status. Allowed values: ${VALID_STATUSES.join(", ")}`,
+      );
+    }
 
     const post = await Post.findOne({ where: { uuid: id } });
     if (!post) {

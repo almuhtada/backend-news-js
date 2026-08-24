@@ -54,7 +54,7 @@ const router = express.Router();
  *         name: status
  *         schema:
  *           type: string
- *           enum: [publish, draft, pending]
+ *           enum: [draft, publish, archived]
  *         description: Filter by post status
  *     responses:
  *       200:
