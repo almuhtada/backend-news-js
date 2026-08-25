@@ -68,6 +68,19 @@ const getUser = async (req, res) => {
   }
 };
 
+const getMyProfile = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return notFound(res, "User not found");
+    }
+
+    return ok(res, user);
+  } catch (error) {
+    return serverError(res, error, "Server error");
+  }
+};
+
 const createUser = async (req, res) => {
   try {
     const { username, email, password, role } = req.body;
@@ -102,16 +115,31 @@ const createUser = async (req, res) => {
 const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { email, role, password } = req.body;
+    const { username, email, role, password } = req.body;
 
     const user = await User.findOne({ where: { uuid: id } });
     if (!user) {
       return notFound(res, "User not found");
     }
 
+    if (!username || !username.trim() || !email || !email.trim()) {
+      return badRequest(res, "Username and email are required");
+    }
+
+    const existingUsername = await User.findOne({
+      where: {
+        username: username.trim(),
+        uuid: { [Op.ne]: id },
+      },
+    });
+    if (existingUsername) {
+      return badRequest(res, "Username already exists");
+    }
+
     // Prepare update data
     const updateData = {
-      email,
+      username: username.trim(),
+      email: email.trim(),
       role,
     };
 
@@ -139,6 +167,21 @@ const updateUser = async (req, res) => {
   }
 };
 
+const updateMyProfile = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return notFound(res, "User not found");
+    }
+
+    req.params.id = user.uuid;
+    req.body.role = user.role;
+    return updateUser(req, res);
+  } catch (error) {
+    return serverError(res, error, "Server error");
+  }
+};
+
 const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
@@ -157,8 +200,10 @@ const deleteUser = async (req, res) => {
 
 module.exports = {
   getUsers,
+  getMyProfile,
   getUser,
   createUser,
   updateUser,
+  updateMyProfile,
   deleteUser,
 };

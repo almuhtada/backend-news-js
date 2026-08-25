@@ -30,6 +30,8 @@ class PostService {
       status,
       category,
       tag,
+      author,
+      editor,
       search,
       exclude,
       sort = "published_at",
@@ -49,6 +51,7 @@ class PostService {
         { content: { [Op.like]: `%${search}%` } },
       ];
     }
+
     if (exclude) {
       const excludedIds = String(exclude)
         .split(",")
@@ -85,6 +88,16 @@ class PostService {
         through: { attributes: [] },
       },
     ];
+
+    if (author) {
+      include[0].where = { uuid: author };
+      include[0].required = true;
+    }
+
+    if (editor) {
+      include[1].where = { uuid: editor };
+      include[1].required = true;
+    }
 
     // Add category filter if specified
     if (category) {

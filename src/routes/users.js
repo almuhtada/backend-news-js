@@ -2,13 +2,18 @@ const express = require("express");
 const { authenticate, authorize } = require("../middleware/auth");
 const {
   getUsers,
+  getMyProfile,
   getUser,
   createUser,
   updateUser,
+  updateMyProfile,
   deleteUser,
 } = require("../controller/userController");
 
 const router = express.Router();
+
+router.get("/profile", authenticate, getMyProfile);
+router.put("/profile", authenticate, updateMyProfile);
 
 /**
  * @swagger
@@ -193,6 +198,9 @@ router.post("/", authenticate, authorize("administrator"), createUser);
  *           schema:
  *             type: object
  *             properties:
+ *               username:
+ *                 type: string
+ *                 description: Unique username
  *               email:
  *                 type: string
  *                 format: email

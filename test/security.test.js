@@ -15,14 +15,14 @@ describe("Security Middleware & Authorization", () => {
 
   describe("Authentication Rate Limiting", () => {
     it("should limit rapid login requests", async () => {
-      // Send 20 requests to hit the rate limiter threshold
-      for (let i = 0; i < 20; i++) {
+      // Send 5 requests to hit the per-account rate limiter threshold
+      for (let i = 0; i < 5; i++) {
         await request(app)
           .post("/api/auth/login")
           .send({ identifier: "invalid_user", password: "wrong_password" });
       }
 
-      // The 21st request should be blocked by rate limiter (HTTP 429)
+      // The 6th request for the same account should be blocked (HTTP 429)
       const res = await request(app)
         .post("/api/auth/login")
         .send({ identifier: "invalid_user", password: "wrong_password" });

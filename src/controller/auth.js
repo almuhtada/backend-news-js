@@ -14,7 +14,7 @@ const register = asyncHandler(async (req, res) => {
  * Login user and return JWT token
  */
 const login = asyncHandler(async (req, res) => {
-  const result = await authService.login(req.body);
+  const result = await authService.login(req.body, req);
 
   // Alert ke Telegram saat ada login ke panel (admin/editor) agar
   // admin tahu jika ada yang masuk ke akun dari luar.

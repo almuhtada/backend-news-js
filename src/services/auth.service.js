@@ -53,7 +53,7 @@ class AuthService {
    * @param {object} data - login credentials
    * @returns {Promise<{token: string, user: object}>}
    */
-  async login(data) {
+  async login(data, req) {
     const { identifier, password } = data;
 
     if (!identifier || !password) {
@@ -65,14 +65,14 @@ class AuthService {
     });
 
     if (!user) {
-      securityAlert.recordFailedLogin({ headers: {}, ip: identifier }, identifier);
+      securityAlert.recordFailedLogin(req, identifier);
       throw new BadRequestError("Invalid credentials");
     }
 
     // Check password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      securityAlert.recordFailedLogin({ headers: {}, ip: identifier }, identifier);
+      securityAlert.recordFailedLogin(req, identifier);
       throw new BadRequestError("Invalid credentials");
     }
 
@@ -99,7 +99,7 @@ class AuthService {
       expires_at: new Date(Date.now() + REFRESH_TOKEN_EXPIRY_MS),
     });
 
-    // Reset counter login gagal untuk IP ini
+    // Reset counter login gagal untuk akun ini setelah login berhasil.
     securityAlert.resetFailedLogin(user.username);
 
     return {
@@ -187,10 +187,7 @@ class AuthService {
   async cleanupExpiredTokens() {
     const deleted = await RefreshToken.destroy({
       where: {
-        [Op.or]: [
-          { expires_at: { [Op.lt]: new Date() } },
-          { revoked: true },
-        ],
+        [Op.or]: [{ expires_at: { [Op.lt]: new Date() } }, { revoked: true }],
       },
     });
     return deleted;
