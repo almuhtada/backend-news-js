@@ -1,45 +1,51 @@
 const sequelize = require("../../src/config/database");
 
 async function addWorkflowColumns() {
-  console.log("Adding workflow columns to posts table...");
+  console.log("Adding missing workflow columns to posts table...");
 
-  try {
-    // Add workflow_status column
-    await sequelize.query(`
-      ALTER TABLE \`posts\`
-      ADD COLUMN \`workflow_status\` ENUM('SUBMITTED','IN_REVIEW','REVISION_REQUIRED','RESUBMITTED','APPROVED','PUBLISHED')
-      NOT NULL DEFAULT 'SUBMITTED'
-      AFTER \`status\`,
-      ADD COLUMN \`approved_by_user_uuid\` CHAR(36) NULL
-      AFTER \`workflow_status\`,
-      ADD COLUMN \`approved_at\` DATETIME NULL
-      AFTER \`approved_by_user_uuid\`,
-      ADD COLUMN \`published_at\` DATETIME NULL
-      AFTER \`approved_at\`,
-      ADD COLUMN \`rejection_reason\` TEXT NULL
-      AFTER \`published_at\`
-    `);
+  const columns = [
+    {
+      name: "workflow_status",
+      sql: `ADD COLUMN \`workflow_status\` ENUM('SUBMITTED','IN_REVIEW','REVISION_REQUIRED','RESUBMITTED','APPROVED','PUBLISHED') NOT NULL DEFAULT 'SUBMITTED' AFTER \`status\``,
+    },
+    {
+      name: "approved_by_user_uuid",
+      sql: `ADD COLUMN \`approved_by_user_uuid\` CHAR(36) NULL AFTER \`workflow_status\``,
+    },
+    {
+      name: "approved_at",
+      sql: `ADD COLUMN \`approved_at\` DATETIME NULL AFTER \`approved_by_user_uuid\``,
+    },
+  ];
 
-    console.log("Columns added successfully");
-
-    // Add index for workflow_status
-    await sequelize.query(`
-      ALTER TABLE \`posts\` ADD INDEX \`idx_workflow_status\` (\`workflow_status\`)
-    `);
-
-    console.log("Index added successfully");
-
-  } catch (error) {
-    // Check if column already exists
-    if (error.message.includes("Duplicate column name")) {
-      console.log("Columns already exist, skipping...");
-    } else {
-      console.error("Migration failed:", error);
-      throw error;
+  for (const col of columns) {
+    try {
+      await sequelize.query(`ALTER TABLE \`posts\` ${col.sql}`);
+      console.log(`✓ Added column: ${col.name}`);
+    } catch (error) {
+      if (error.message.includes("Duplicate column name")) {
+        console.log(`- Column ${col.name} already exists, skipping`);
+      } else {
+        console.error(`✗ Failed to add ${col.name}:`, error.message);
+        throw error;
+      }
     }
-  } finally {
-    await sequelize.close();
   }
+
+  // Add index for workflow_status
+  try {
+    await sequelize.query(`ALTER TABLE \`posts\` ADD INDEX \`idx_workflow_status\` (\`workflow_status\`)`);
+    console.log("✓ Added index: idx_workflow_status");
+  } catch (error) {
+    if (error.message.includes("Duplicate key name")) {
+      console.log("- Index idx_workflow_status already exists");
+    } else {
+      console.warn("Index warning:", error.message);
+    }
+  }
+
+  await sequelize.close();
+  console.log("Done!");
 }
 
 if (require.main === module) {
