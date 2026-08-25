@@ -17,6 +17,7 @@
     "clean:sample": "node scripts/maintenance/clean-sample-data.js",
     "clean:content": "node scripts/maintenance/clean-wp-content.js",
     "cleanup:wp": "node scripts/migration/cleanup-wp-tables.js",
+    "migrate:workflow": "node scripts/migration/migrate-workflow-statuses.js",
     "seed": "node scripts/seed/seed-sample-data.js",
     "sync:db": "node scripts/maintenance/sync-database.js",
     "fix:img-urls": "node scripts/maintenance/update-featured-image-urls.js",

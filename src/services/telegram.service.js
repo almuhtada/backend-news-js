@@ -4,6 +4,13 @@ const TOPIC_PENULIS = process.env.TELEGRAM_TOPIC_PENULIS;
 const TOPIC_EDITOR = process.env.TELEGRAM_TOPIC_EDITOR;
 const TOPIC_SPAM = process.env.TELEGRAM_TOPIC_SPAM;
 const TOPIC_LOGIN_HISTORY = process.env.TELEGRAM_TOPIC_LOGIN_HISTORY;
+const TOPIC_ARTIKEL_MASUK =
+  process.env.TELEGRAM_TOPIC_ARTIKEL_MASUK || TOPIC_PENULIS;
+const TOPIC_REVISI_ARTIKEL =
+  process.env.TELEGRAM_TOPIC_REVISI_ARTIKEL || TOPIC_EDITOR;
+const TOPIC_APPROVAL = process.env.TELEGRAM_TOPIC_APPROVAL || TOPIC_EDITOR;
+const TOPIC_SYSTEM_ERROR =
+  process.env.TELEGRAM_TOPIC_SYSTEM_ERROR || TOPIC_SPAM;
 
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
@@ -27,10 +34,16 @@ function escapeHtml(text) {
 
 async function sendTelegramMessage({ topic, text, useHtml = false }) {
   let topicId;
-  if (topic === "PENULIS") {
-    topicId = TOPIC_PENULIS;
+  if (topic === "PENULIS" || topic === "ARTIKEL_MASUK") {
+    topicId = TOPIC_ARTIKEL_MASUK;
+  } else if (topic === "REVISI_ARTIKEL") {
+    topicId = TOPIC_REVISI_ARTIKEL;
+  } else if (topic === "APPROVAL") {
+    topicId = TOPIC_APPROVAL;
   } else if (topic === "SPAM") {
     topicId = TOPIC_SPAM;
+  } else if (topic === "SYSTEM_ERROR") {
+    topicId = TOPIC_SYSTEM_ERROR;
   } else if (topic === "LOGIN_HISTORY") {
     topicId = TOPIC_LOGIN_HISTORY;
   } else {
@@ -40,15 +53,15 @@ async function sendTelegramMessage({ topic, text, useHtml = false }) {
 
   if (!BOT_TOKEN || !CHAT_ID) {
     throw new Error(
-      `Telegram ENV belum lengkap: BOT_TOKEN=${!!BOT_TOKEN}, CHAT_ID=${CHAT_ID}`
+      `Telegram ENV belum lengkap: BOT_TOKEN=${!!BOT_TOKEN}, CHAT_ID=${CHAT_ID}`,
     );
   }
 
   if (!isForumChat) {
     console.warn(
       "[Telegram] PERINGATAN: CHAT_ID tidak diawali -100. " +
-      "Supergroup seharusnya formatnya -100XXXXXXXXXX. " +
-      `Nilai saat ini: ${CHAT_ID}`
+        "Supergroup seharusnya formatnya -100XXXXXXXXXX. " +
+        `Nilai saat ini: ${CHAT_ID}`,
     );
   }
 

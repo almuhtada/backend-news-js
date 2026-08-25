@@ -1,4 +1,11 @@
-const { Post, User, Category, Tag, Notification } = require("../schema");
+const {
+  Post,
+  User,
+  Category,
+  Tag,
+  Notification,
+  ArticleActivity,
+} = require("../schema");
 const { Op } = require("sequelize");
 const { generateSummary } = require("./summarizer.service");
 const { sendTelegramMessage } = require("./telegram.service");
@@ -6,6 +13,14 @@ const { NotFoundError, BadRequestError, ForbiddenError } = require("../utils");
 const { parsePagination } = require("../utils");
 const recommendationService = require("./recommendation.service");
 const VALID_STATUSES = ["draft", "publish", "archived"];
+const WORKFLOW = {
+  SUBMITTED: "SUBMITTED",
+  IN_REVIEW: "IN_REVIEW",
+  REVISION_REQUIRED: "REVISION_REQUIRED",
+  RESUBMITTED: "RESUBMITTED",
+  APPROVED: "APPROVED",
+  PUBLISHED: "PUBLISHED",
+};
 
 class PostService {
   /**
@@ -90,7 +105,9 @@ class PostService {
     ];
 
     if (author) {
-      include[0].where = { uuid: author };
+      include[0].where = {
+        [Op.or]: [{ uuid: author }, { username: author }],
+      };
       include[0].required = true;
     }
 
@@ -235,6 +252,7 @@ class PostService {
       content,
       excerpt,
       featured_image,
+      image_caption,
       category_ids = [],
       tag_ids = [],
       author_id,
@@ -247,12 +265,18 @@ class PostService {
       throw new BadRequestError("Title and content are required");
     }
 
-    // Penulis: prioritaskan author_uuid (uuid, dipakai admin), lalu user yang login
+    const canManageAssignments = user?.role === "administrator";
+
+    // Hanya administrator yang boleh memilih Penulis/Editor lain.
+    const requestedAuthorUuid = canManageAssignments ? author_uuid : undefined;
+    const requestedEditorUuid = canManageAssignments ? editor_uuid : undefined;
+
+    // Penulis: prioritaskan pilihan admin, lalu user yang login
     let postAuthorId = null;
     let author = null;
 
-    if (author_uuid) {
-      author = await User.findOne({ where: { uuid: author_uuid } });
+    if (requestedAuthorUuid) {
+      author = await User.findOne({ where: { uuid: requestedAuthorUuid } });
       if (author) postAuthorId = author.id;
     }
 
@@ -280,8 +304,10 @@ class PostService {
 
     // Editor (opsional): resolve dari uuid
     let postEditorId = null;
-    if (editor_uuid) {
-      const editor = await User.findOne({ where: { uuid: editor_uuid } });
+    if (requestedEditorUuid) {
+      const editor = await User.findOne({
+        where: { uuid: requestedEditorUuid },
+      });
       if (editor) postEditorId = editor.id;
     }
 
@@ -320,11 +346,22 @@ class PostService {
       excerpt,
       summary,
       featured_image,
+      image_caption,
       status,
+      workflow_status: WORKFLOW.SUBMITTED,
       author_id: postAuthorId,
       editor_id: postEditorId,
       published_at: status === "publish" ? new Date() : null,
     });
+
+    await this.addActivity(
+      post,
+      user,
+      "SUBMITTED",
+      WORKFLOW.SUBMITTED,
+      null,
+      null,
+    );
 
     // Add categories
     if (category_ids.length > 0) {
@@ -365,12 +402,14 @@ class PostService {
       priority: "medium",
       category: "news",
       post_id: post.id,
+      article_uuid: post.uuid,
+      user_uuid: author?.uuid,
     });
 
     // Send Telegram Notification (non-blocking)
     const frontendUrl = process.env.FRONTEND_URL || "https://almuhtada.org";
     sendTelegramMessage({
-      topic: "PENULIS",
+      topic: "ARTIKEL_MASUK",
       useHtml: true,
       text:
         `📝 <b>Berita Baru Dikirim</b>\n\n` +
@@ -398,6 +437,7 @@ class PostService {
       content,
       excerpt,
       featured_image,
+      image_caption,
       status,
       category_ids,
       tag_ids,
@@ -417,6 +457,22 @@ class PostService {
       throw new NotFoundError("Post not found");
     }
 
+    const canEditAnyPost = ["administrator", "editor"].includes(user?.role);
+    const canManageAssignments = user?.role === "administrator";
+    if (
+      !canEditAnyPost &&
+      !(user?.role === "author" && post.author_id === user.id)
+    ) {
+      throw new ForbiddenError("You can only edit your own posts");
+    }
+
+    if (
+      user?.role === "author" &&
+      ![WORKFLOW.REVISION_REQUIRED, undefined].includes(post.workflow_status)
+    ) {
+      throw new ForbiddenError("Author can only edit posts requiring revision");
+    }
+
     if (
       status !== undefined &&
       status !== post.status &&
@@ -430,15 +486,15 @@ class PostService {
     let newAuthorId = null;
     let newEditorId = null;
     let clearEditor = false;
-    if (author_uuid === "none") {
+    if (canManageAssignments && author_uuid === "none") {
       newAuthorId = post.author_id; // author wajib ada, tidak dikosongkan
-    } else if (author_uuid) {
+    } else if (canManageAssignments && author_uuid) {
       const authorUser = await User.findOne({ where: { uuid: author_uuid } });
       if (authorUser) newAuthorId = authorUser.id;
     }
-    if (editor_uuid === "none") {
+    if (canManageAssignments && editor_uuid === "none") {
       clearEditor = true;
-    } else if (editor_uuid) {
+    } else if (canManageAssignments && editor_uuid) {
       const editorUser = await User.findOne({ where: { uuid: editor_uuid } });
       if (editorUser) newEditorId = editorUser.id;
     }
@@ -453,6 +509,8 @@ class PostService {
       excerpt: excerpt !== undefined ? excerpt : post.excerpt,
       featured_image:
         featured_image !== undefined ? featured_image : post.featured_image,
+      image_caption:
+        image_caption !== undefined ? image_caption : post.image_caption,
       status: status || post.status,
       published_at:
         status === "publish" && !post.published_at
@@ -508,9 +566,234 @@ class PostService {
       priority: "medium",
       category: "news",
       post_id: post.id,
+      article_uuid: post.uuid,
+      user_uuid: user?.uuid || author?.uuid,
     });
 
     return updatedPost;
+  }
+
+  async addActivity(
+    post,
+    user,
+    action,
+    statusAfter,
+    comment = null,
+    statusBefore,
+  ) {
+    return ArticleActivity.create({
+      article_uuid: post.uuid,
+      user_uuid: user?.uuid || null,
+      action,
+      status_before: statusBefore ?? post.workflow_status,
+      status_after: statusAfter,
+      comment,
+    });
+  }
+
+  async getWorkflowPost(articleUuid) {
+    const post = await Post.findOne({ where: { uuid: articleUuid } });
+    if (!post) throw new NotFoundError("Post not found");
+    return post;
+  }
+
+  async submitRevision(articleUuid, user) {
+    const post = await this.getWorkflowPost(articleUuid);
+    if (user?.role !== "author" || post.author_id !== user.id) {
+      throw new ForbiddenError("Only the article author can submit a revision");
+    }
+    if (post.workflow_status !== WORKFLOW.REVISION_REQUIRED) {
+      throw new ForbiddenError(
+        "Only posts requiring revision can be resubmitted",
+      );
+    }
+    const before = post.workflow_status;
+    await post.update({ workflow_status: WORKFLOW.RESUBMITTED });
+    await this.addActivity(
+      post,
+      user,
+      "RESUBMITTED",
+      WORKFLOW.RESUBMITTED,
+      null,
+      before,
+    );
+    await Notification.create({
+      user_name: user.username,
+      user_uuid: user.uuid,
+      action: "edit",
+      target: post.title,
+      status: "pending",
+      description:
+        "Author telah mengirim revisi dan artikel siap diperiksa kembali.",
+      priority: "medium",
+      category: "news",
+      post_id: post.id,
+      article_uuid: post.uuid,
+    });
+    await sendTelegramMessage({
+      topic: "REVISI_ARTIKEL",
+      useHtml: true,
+      text:
+        `<b>REVISI ARTIKEL</b>\n\n` +
+        `<b>Author:</b> ${user.username}\n` +
+        `<b>Artikel:</b> ${post.title}\n` +
+        `<b>Status:</b> RESUBMITTED\n` +
+        `<b>Article UUID:</b> ${post.uuid}`,
+    }).catch(() => {});
+    return post;
+  }
+
+  async startReview(articleUuid, user) {
+    if (!["administrator", "editor"].includes(user?.role)) {
+      throw new ForbiddenError("Only an editor can review an article");
+    }
+    const post = await this.getWorkflowPost(articleUuid);
+    if (
+      ![WORKFLOW.SUBMITTED, WORKFLOW.RESUBMITTED].includes(post.workflow_status)
+    ) {
+      throw new ForbiddenError("Article is not waiting for review");
+    }
+    const before = post.workflow_status;
+    await post.update({ workflow_status: WORKFLOW.IN_REVIEW });
+    await this.addActivity(
+      post,
+      user,
+      "IN_REVIEW",
+      WORKFLOW.IN_REVIEW,
+      null,
+      before,
+    );
+    return post;
+  }
+
+  async requestRevision(articleUuid, user, comment) {
+    if (!["administrator", "editor"].includes(user?.role)) {
+      throw new ForbiddenError("Only an editor can request revision");
+    }
+    const post = await this.getWorkflowPost(articleUuid);
+    if (
+      ![WORKFLOW.SUBMITTED, WORKFLOW.IN_REVIEW, WORKFLOW.RESUBMITTED].includes(
+        post.workflow_status,
+      )
+    ) {
+      throw new ForbiddenError("Article is not currently under review");
+    }
+    const before = post.workflow_status;
+    await post.update({
+      workflow_status: WORKFLOW.REVISION_REQUIRED,
+      rejection_reason:
+        comment || "Mohon lakukan revisi sesuai catatan editor.",
+      status: "draft",
+    });
+    await this.addActivity(
+      post,
+      user,
+      "REVISION_REQUIRED",
+      WORKFLOW.REVISION_REQUIRED,
+      comment,
+      before,
+    );
+    await Notification.create({
+      user_name: user.username,
+      user_uuid: user.uuid,
+      action: "edit",
+      target: post.title,
+      status: "rejected",
+      description: comment || "Artikel memerlukan revisi.",
+      priority: "high",
+      category: "news",
+      post_id: post.id,
+      article_uuid: post.uuid,
+    });
+    return post;
+  }
+
+  async approveArticle(articleUuid, user) {
+    if (!["administrator", "editor"].includes(user?.role)) {
+      throw new ForbiddenError("Only an editor can approve an article");
+    }
+    const post = await this.getWorkflowPost(articleUuid);
+    if (
+      ![WORKFLOW.SUBMITTED, WORKFLOW.IN_REVIEW, WORKFLOW.RESUBMITTED].includes(
+        post.workflow_status,
+      )
+    ) {
+      throw new ForbiddenError("Article is not currently under review");
+    }
+    const before = post.workflow_status;
+    const approvedAt = new Date();
+    await post.update({
+      workflow_status: WORKFLOW.APPROVED,
+      status: "publish",
+      approved_by_user_uuid: user.uuid,
+      approved_at: approvedAt,
+      rejection_reason: null,
+    });
+    await this.addActivity(
+      post,
+      user,
+      "APPROVED",
+      WORKFLOW.APPROVED,
+      null,
+      before,
+    );
+    await this.publishArticle(post, approvedAt);
+    await Notification.create({
+      user_name: user.username,
+      user_uuid: user.uuid,
+      action: "edit",
+      target: post.title,
+      status: "approved",
+      description: `Artikel disetujui oleh ${user.username}.`,
+      priority: "high",
+      category: "news",
+      post_id: post.id,
+      article_uuid: post.uuid,
+    });
+    const author = await User.findByPk(post.author_id);
+    await sendTelegramMessage({
+      topic: "APPROVAL",
+      useHtml: true,
+      text:
+        `<b>ARTIKEL DISETUJUI</b>\n\n` +
+        `<b>Artikel:</b> ${post.title}\n` +
+        `<b>Author:</b> ${author?.username || "-"}\n` +
+        `<b>Approved by:</b> ${user.username}\n` +
+        `<b>Approved by UUID:</b> ${user.uuid}\n` +
+        `<b>Status:</b> APPROVED\n` +
+        `<b>Waktu:</b> ${approvedAt.toLocaleString("id-ID")}\n` +
+        `<b>Article UUID:</b> ${post.uuid}`,
+    }).catch((err) => {
+      console.error("Telegram approval notification failed:", err);
+      this.logSystemError("Telegram approval notification failed", err, {
+        articleUuid: post.uuid,
+        userUuid: user.uuid,
+      });
+    });
+    return post;
+  }
+
+  async publishArticle(post, approvedAt = new Date()) {
+    await post.update({
+      workflow_status: WORKFLOW.PUBLISHED,
+      published_at: approvedAt,
+    });
+    await this.addActivity(
+      post,
+      null,
+      "PUBLISHED",
+      WORKFLOW.PUBLISHED,
+      null,
+      WORKFLOW.APPROVED,
+    );
+  }
+
+  async getActivity(articleUuid) {
+    await this.getWorkflowPost(articleUuid);
+    return ArticleActivity.findAll({
+      where: { article_uuid: articleUuid },
+      order: [["created_at", "ASC"]],
+    });
   }
 
   /**
@@ -680,6 +963,21 @@ class PostService {
     }
 
     return posts;
+  }
+
+  logSystemError(message, error, context = {}) {
+    const { sendTelegramMessage } = require("./telegram.service");
+    sendTelegramMessage({
+      topic: "SYSTEM_ERROR",
+      useHtml: true,
+      text:
+        `<b>SYSTEM ERROR</b>\n\n` +
+        `<b>Message:</b> ${message}\n` +
+        `<b>Error:</b> ${error?.message || String(error)}\n` +
+        `<b>Context:</b> ${JSON.stringify(context, null, 2).substring(0, 500)}\n` +
+        `<b>Waktu:</b> ${new Date().toLocaleString("id-ID")}`,
+    }).catch(() => {});
+    console.error("[SystemError]", message, error, context);
   }
 }
 

@@ -28,6 +28,8 @@ Lihat **[DOCS_BE.md](DOCS_BE.md)** untuk dokumentasi detail:
 | Notifikasi | Telegram Bot API |
 | Dokumentasi | Swagger UI Express |
 | Logger | Morgan (HTTP) + utils/logger |
+| Rate Limit | express-rate-limit |
+| Security | Helmet, CORS |
 
 ---
 
@@ -72,6 +74,7 @@ BACKEND_URL=http://localhost:3001
 
 # Security — generate dengan: openssl rand -base64 32
 JWT_SECRET=your_jwt_secret_here
+JWT_REFRESH_SECRET=your_refresh_secret_here
 
 # AI Summary (opsional) — https://console.groq.com
 GROQ_API_KEY=
@@ -81,6 +84,14 @@ TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
 TELEGRAM_TOPIC_PENULIS=
 TELEGRAM_TOPIC_EDITOR=
+
+# Upload
+UPLOAD_PATH=uploads/images
+MAX_FILE_SIZE=5242880
+
+# Frontend URLs (untuk CORS)
+FRONTEND_URL=http://localhost:5173
+DASHBOARD_URL=http://localhost:5174
 ```
 
 ### 3. Jalankan Server
@@ -110,10 +121,16 @@ docker-compose up -d
 npm run seed
 
 # Seed data About
-node scripts/seed/seedAboutData.js
+npm run seed:about
 
 # Seed admin user
 node scripts/seed/seedAdminUser.js
+
+# Seed page contents
+npm run seed:page-contents
+
+# Import profile pages
+npm run import:profile-pages
 ```
 
 ---
@@ -128,11 +145,11 @@ backend-news-js/
 │   ├── swagger.js                # Swagger spec & docs config
 │   ├── config/
 │   │   └── database.js           # Sequelize connection
-│   ├── modules/                  # Domain-based module registry
+│   ├── modules/                  # Domain-based module registry (20 modules)
 │   ├── controller/               # Request handlers (business orchestration)
 │   ├── middleware/               # Auth/upload and request middleware
-│   ├── routes/                   # API route registration
-│   ├── schema/                   # Sequelize models + associations
+│   ├── routes/                   # API route registration (20 route files)
+│   ├── schema/                   # Sequelize models + associations (21 models)
 │   ├── services/                 # External integrations (AI/Telegram)
 │   ├── shared/                   # Cross-cutting constants/http/middleware
 │   └── utils/                    # Shared helpers (backward-compatible)
@@ -149,8 +166,8 @@ backend-news-js/
 │   ├── database/                 # Cek, cleanup, migrasi tabel
 │   ├── deployment/               # Script deploy VPS & Docker
 │   ├── maintenance/              # Clean content, sync DB, update URL
-│   ├── migration/                # Migrasi dari WordPress
-│   └── seed/                     # Seed data awal
+│   ├── migration/                # Migrasi dari WordPress (7 scripts)
+│   └── seed/                     # Seed data awal (5 scripts)
 ├── ai-news/
 │   ├── train.py                  # Training model AI lokal
 │   ├── infer.py                  # Inferensi model AI lokal
@@ -164,26 +181,31 @@ backend-news-js/
 
 ---
 
-## Database Models & Relasi
+## Database Models & Relasi (21 Models)
 
 | Model | Keterangan |
 |---|---|
-| `User` | Penulis & editor berita |
-| `Post` | Artikel berita (author + editor) |
-| `Category` | Kategori artikel (parent-child) |
+| `User` | Penulis & editor berita (role: admin, editor, penulis) |
+| `Post` | Artikel berita (author + editor, status: draft/pending/publish) |
+| `Category` | Kategori artikel (parent-child hierarchy) |
 | `Tag` | Tag artikel |
 | `PostCategory` | Relasi many-to-many Post ↔ Category |
 | `PostTag` | Relasi many-to-many Post ↔ Tag |
 | `Comment` | Komentar bersarang (threaded) |
-| `PostLike` | Like per post |
+| `PostLike` | Like per post (user + anonymous via identifier) |
+| `PostViewLog` | Log view untuk analytics |
 | `Notification` | Notifikasi aktivitas redaksi |
-| `Achievement` | Prestasi/penghargaan |
-| `Publication` | Publikasi digital |
+| `Achievement` | Prestasi/penghargaan mahasantri |
+| `Publication` | Publikasi digital/jurnal |
 | `About` | Seksi halaman About |
 | `PageContent` | Konten halaman dinamis |
 | `Setting` | Pengaturan global website |
 | `Media` | File media/gambar |
 | `Page` | Halaman statis (parent-child) |
+| `Author` | Profil penulis terpisah dari User |
+| `RefreshToken` | Token refresh untuk JWT |
+| `UserBookmark` | Bookmark artikel user |
+| `ArticleActivity` | Activity log untuk moderasi |
 
 ---
 
@@ -195,8 +217,11 @@ Dokumentasi interaktif tersedia di: `http://localhost:3001/api-docs`
 
 ```
 POST   /api/auth/register         Daftar user baru
-POST   /api/auth/login            Login, dapat JWT token
+POST   /api/auth/login            Login, dapat JWT + Refresh token
+POST   /api/auth/refresh          Refresh access token
 GET    /api/auth/profile          Profil user (butuh token)
+PUT    /api/auth/profile          Update profil
+POST   /api/auth/logout           Logout (revoke refresh token)
 ```
 
 ### Posts
@@ -212,6 +237,10 @@ POST   /api/posts                 Buat post baru (AI summary otomatis)
 PUT    /api/posts/:id             Update post
 DELETE /api/posts/:id             Hapus post
 POST   /api/posts/summarize       Generate ringkasan teks (AI)
+POST   /api/posts/:id/like        Like/unlike post
+DELETE /api/posts/:id/like        Hapus like
+GET    /api/posts/:id/comments    Komentar post
+POST   /api/posts/:id/comments    Tambah komentar
 ```
 
 **Query Parameters `GET /api/posts`:**
@@ -231,6 +260,7 @@ POST   /api/posts/summarize       Generate ringkasan teks (AI)
 
 ```
 GET    /api/categories            Semua kategori (dengan post_count)
+GET    /api/categories/tree       Kategori hierarchy tree
 GET    /api/categories/:slug      Detail kategori
 GET    /api/categories/:slug/posts Post dalam kategori (pagination)
 POST   /api/categories            Buat kategori baru
@@ -248,7 +278,7 @@ PUT    /api/tags/:id              Update tag
 DELETE /api/tags/:id              Hapus tag
 ```
 
-### Users
+### Users & Authors
 
 ```
 GET    /api/users                 Semua user (pagination + filter role)
@@ -256,6 +286,8 @@ GET    /api/users/:id             Detail user
 POST   /api/users                 Buat user baru
 PUT    /api/users/:id             Update user
 DELETE /api/users/:id             Hapus user
+GET    /api/authors               Semua author
+GET    /api/authors/:slug         Detail author + post-nya
 ```
 
 ### Upload
@@ -284,9 +316,14 @@ GET/POST/PUT/DELETE  /api/page-contents
 GET/POST/PUT/DELETE  /api/notifications
 GET/POST/PUT/DELETE  /api/settings
 GET/POST/PUT/DELETE  /api/comments
-POST/DELETE          /api/posts/:id/like
+GET/POST             /api/interactions/stats
 GET                  /api/stats
 POST                 /api/telegram/send
+GET                  /api/home                # Data homepage (featured, trending, latest)
+GET                  /api/recommendations     # Rekomendasi artikel
+GET                  /api/search              # Pencarian global
+GET                  /api/moderation/stats    # Statistik moderasi
+POST                 /api/moderation/scan     # Scan spam
 ```
 
 ---
@@ -339,6 +376,9 @@ npm run dev              # Jalankan development server (nodemon)
 npm start                # Jalankan production server
 
 npm run seed             # Seed data sample
+npm run seed:about       # Seed data About
+npm run seed:page-contents # Seed page contents
+npm run import:profile-pages # Import profile pages
 npm run sync:db          # Sinkronisasi struktur database
 
 # Migrasi WordPress
@@ -354,6 +394,9 @@ npm run cleanup:wp       # Hapus tabel WordPress lama
 npm run clean:sample     # Hapus data sample
 npm run clean:content    # Bersihkan konten WP
 npm run fix:img-urls     # Fix URL featured image
+npm run fix:img-urls:dry # Dry-run fix URL
+
+# Testing & Quality
 npm run test             # Jalankan test sekali (CI friendly)
 npm run test:watch       # Jalankan test mode watch
 npm run test:ci          # Test + coverage
@@ -383,11 +426,24 @@ TELEGRAM_TOPIC_PENULIS=
 TELEGRAM_TOPIC_EDITOR=
 ```
 
+### Approval Flow
+1. Penulis submit berita (status: `draft` / `pending`)
+2. Notifikasi masuk ke dashboard editor
+3. Editor preview artikel, lalu **Approve** atau **Reject** (dengan alasan)
+4. Approve → status berubah ke `publish`, tersedia di frontend
+5. Reject → penulis mendapat notifikasi + alasan penolakan
+
 ### Upload Gambar
 - Format: JPEG, JPG, PNG, GIF, WebP
 - Ukuran maksimal: **5 MB**
 - Disimpan di: `uploads/images/`
 - Nama file otomatis di-sanitasi dan di-deduplicate
+
+### Sistem Keamanan
+- **Spam Shield**: Deteksi konten spam otomatis
+- **File Integrity**: Monitoring perubahan file kritis
+- **Security Alerts**: Notifikasi aktivitas mencurigakan
+- **Rate Limiting**: Proteksi endpoint publik
 
 ---
 
@@ -426,3 +482,22 @@ Lihat panduan lengkap di folder `docs/deployment/`:
 - `DOCKER-DEPLOYMENT.md` — deploy dengan Docker
 - `NGINX-SETUP.md` — konfigurasi NGINX reverse proxy
 - `DEPLOYMENT-CHECKLIST.md` — checklist sebelum go-live
+
+### PM2 Production
+```bash
+npm install -g pm2
+pm2 start ecosystem.config.js --env production
+pm2 save
+pm2 startup
+```
+
+---
+
+## Integrasi Frontend
+
+| Frontend | URL | Deskripsi |
+|---|---|---|
+| Public Website | `http://localhost:5173` | `frontend-news-ts` |
+| Admin Dashboard | `http://localhost:5174` | `dashboard-news-ts` |
+
+Keduanya menggunakan `VITE_API_URL=http://localhost:3001/api`

@@ -10,6 +10,11 @@ const {
   getRecentPosts,
   getTrendingPosts,
   summarizeText,
+  submitRevision,
+  startReview,
+  requestRevision,
+  approveArticle,
+  getArticleActivity,
 } = require("../controller/postController");
 const { authenticate, authorize } = require("../middleware/auth");
 
@@ -226,6 +231,12 @@ router.get("/recent", getRecentPosts);
  *         description: Server error
  */
 router.get("/uuid/:uuid", getPostByUuid);
+
+router.post("/:uuid/submit-revision", authenticate, submitRevision);
+router.post("/:uuid/start-review", authenticate, startReview);
+router.post("/:uuid/request-revision", authenticate, requestRevision);
+router.post("/:uuid/approve", authenticate, approveArticle);
+router.get("/:uuid/activity", authenticate, getArticleActivity);
 
 /**
  * @swagger

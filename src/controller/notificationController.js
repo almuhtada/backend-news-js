@@ -1,5 +1,6 @@
 const { Notification, Post, User } = require("../schema");
 const { sendTelegramMessage } = require("../services/telegram.service");
+const postService = require("../services/post.service");
 const { Op } = require("sequelize");
 
 // Get all notifications with pagination
@@ -33,27 +34,44 @@ exports.getAllNotifications = async (req, res) => {
       ];
     }
 
+    const postInclude = {
+      model: Post,
+      as: "post",
+      attributes: [
+        "id",
+        "uuid",
+        "title",
+        "slug",
+        "featured_image",
+        "status",
+        "workflow_status",
+        "rejection_reason",
+        "author_id",
+        "image_caption",
+        "approved_by_user_uuid",
+        "approved_at",
+        "published_at",
+      ],
+      required: req.user?.role === "author",
+      include: [
+        {
+          model: User,
+          as: "author",
+          attributes: ["id", "uuid", "username", "email", "display_name"],
+          required: false,
+        },
+      ],
+      ...(req.user?.role === "author"
+        ? { where: { author_id: req.user.id } }
+        : {}),
+    };
+
     const { count, rows: notifications } = await Notification.findAndCountAll({
       where,
       attributes: {
         exclude: ["id", "post_id"],
       },
-      include: [
-        {
-          model: Post,
-          as: "post",
-          attributes: ["id", "uuid", "title", "slug", "featured_image", "status"],
-          required: false,
-          include: [
-            {
-              model: User,
-              as: "author",
-              attributes: ["id", "uuid", "username", "email", "display_name"],
-              required: false,
-            },
-          ],
-        },
-      ],
+      include: [postInclude],
       limit: parseInt(limit),
       offset: parseInt(offset),
       order: [[sort, order]],
@@ -112,6 +130,8 @@ exports.createNotification = async (req, res) => {
       priority,
       category,
       post_id: post?.id,
+      article_uuid: post?.uuid,
+      user_uuid: req.user?.uuid || null,
     });
 
     // Include post data in response if post_id exists
@@ -123,7 +143,14 @@ exports.createNotification = async (req, res) => {
         {
           model: Post,
           as: "post",
-          attributes: ["id", "uuid", "title", "slug", "featured_image", "status"],
+          attributes: [
+            "id",
+            "uuid",
+            "title",
+            "slug",
+            "featured_image",
+            "status",
+          ],
           include: [
             {
               model: User,
@@ -170,12 +197,37 @@ exports.updateNotificationStatus = async (req, res) => {
       });
     }
 
-    // Update notification status
+    const articleUuid = notification.article_uuid;
+    if (articleUuid && status === "approved") {
+      // postService.approveArticle already handles:
+      // - updating post status to APPROVED then PUBLISHED
+      // - activity logging
+      // - Telegram notification with correct data
+      const approvedPost = await postService.approveArticle(
+        articleUuid,
+        req.user,
+      );
+      // Update notification status to approved
+      await notification.update({ status: "approved" });
+      return res.json({ success: true, data: approvedPost });
+    }
+    if (articleUuid && status === "rejected") {
+      const revisedPost = await postService.requestRevision(
+        articleUuid,
+        req.user,
+        rejection_reason,
+      );
+      // Update notification status to rejected
+      await notification.update({ status: "rejected" });
+      return res.json({ success: true, data: revisedPost });
+    }
+
+    // For other status changes, just update notification
     await notification.update({ status });
 
     let post = null;
 
-    // If approved and has post_id, update post status
+    // If approved and has post_id, update post status (legacy path)
     if (status === "approved" && notification.post_id && post_status) {
       post = await Post.findByPk(notification.post_id);
       if (post) {
@@ -203,36 +255,9 @@ exports.updateNotificationStatus = async (req, res) => {
     const author = post ? await User.findByPk(post.author_id) : null;
     const editorName = req.user?.username || "Editor";
 
-    if (status === "approved") {
-      const frontendUrl = process.env.FRONTEND_URL || "https://almuhtada.org";
-      await sendTelegramMessage({
-        topic: "EDITOR",
-        useHtml: true,
-        text:
-          `🟢 <b>Berita Disetujui &amp; Dipublikasikan</b>\n\n` +
-          `📌 <b>Judul:</b> ${post?.title}\n` +
-          `✍️ <b>Penulis:</b> ${author?.username || "Unknown"}\n` +
-          `🛡️ <b>Editor:</b> ${editorName}\n` +
-          `⏰ <b>Waktu:</b> ${new Date().toLocaleString("id-ID")}\n\n` +
-          `🔗 <a href="${frontendUrl}/detail-news/${post?.slug}"><b>Lihat Lengkap</b></a>`,
-      });
-    }
+    // Telegram notifications are now handled by postService methods
+    // No duplicate sending here to ensure data consistency
 
-    if (status === "rejected") {
-      await sendTelegramMessage({
-        topic: "EDITOR",
-        useHtml: true,
-        text:
-          `🔴 <b>Berita Ditolak oleh Editor</b>\n\n` +
-          `📌 <b>Judul:</b> ${post?.title}\n` +
-          `✍️ <b>Penulis:</b> ${author?.username || "Unknown"}\n` +
-          `🛡️ <b>Editor:</b> ${editorName}\n` +
-          `⏰ <b>Waktu:</b> ${new Date().toLocaleString("id-ID")}\n\n` +
-          `❌ <b>Alasan Penolakan:</b>\n` +
-          `<i>"${rejection_reason || "Tidak ada alasan yang diberikan"}"</i>\n\n` +
-          `💡 <i>Silakan perbaiki berita Anda melalui dashboard penulis untuk dikirim kembali.</i>`,
-      });
-    }
     // Fetch updated notification with post
     const updatedNotification = await Notification.findByPk(id, {
       include: [
@@ -250,6 +275,18 @@ exports.updateNotificationStatus = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating notification:", error);
+    // Log system error to Telegram
+    const { sendTelegramMessage } = require("../services/telegram.service");
+    sendTelegramMessage({
+      topic: "SYSTEM_ERROR",
+      useHtml: true,
+      text:
+        `<b>SYSTEM ERROR</b>\n\n` +
+        `<b>Operation:</b> Update notification status\n` +
+        `<b>Error:</b> ${error.message}\n` +
+        `<b>Notification UUID:</b> ${req.params.id}\n` +
+        `<b>Waktu:</b> ${new Date().toLocaleString("id-ID")}`,
+    }).catch(() => {});
     res.status(500).json({
       success: false,
       message: "Error updating notification",

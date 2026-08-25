@@ -50,9 +50,33 @@ const Post = sequelize.define(
       type: DataTypes.STRING(500),
       allowNull: true,
     },
+    image_caption: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
     status: {
       type: DataTypes.ENUM("publish", "draft", "archived"),
       defaultValue: "draft",
+    },
+    workflow_status: {
+      type: DataTypes.ENUM(
+        "SUBMITTED",
+        "IN_REVIEW",
+        "REVISION_REQUIRED",
+        "RESUBMITTED",
+        "APPROVED",
+        "PUBLISHED",
+      ),
+      allowNull: false,
+      defaultValue: "SUBMITTED",
+    },
+    approved_by_user_uuid: {
+      type: DataTypes.UUID,
+      allowNull: true,
+    },
+    approved_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
     published_at: {
       type: DataTypes.DATE,

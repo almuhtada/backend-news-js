@@ -1,31 +1,36 @@
 const Groq = require("groq-sdk");
 require("dotenv").config();
 
-// Lazy initialization - hanya buat client saat diperlukan
-let groqClient = null;
+// Lazy initialization - client terpisah agar key utama dan backup dapat dicoba berurutan.
+const groqClients = new Map();
 
-function getGroqClient() {
-  if (!groqClient && process.env.GROQ_API_KEY) {
-    groqClient = new Groq({ apiKey: process.env.GROQ_API_KEY });
+function getGroqClient(apiKey) {
+  if (!apiKey) return null;
+  if (!groqClients.has(apiKey)) {
+    groqClients.set(apiKey, new Groq({ apiKey }));
   }
-  return groqClient;
+  return groqClients.get(apiKey);
 }
 
 exports.generateSummary = async (content) => {
-  // Jika tidak ada API key, gunakan fallback
-  if (!process.env.GROQ_API_KEY) {
+  const apiKeys = [process.env.GROQ_API_KEY, process.env.BACKUP_API_KEY].filter(
+    Boolean,
+  );
+
+  if (apiKeys.length === 0) {
     return fallbackSummarize(content);
   }
 
-  try {
-    const groq = getGroqClient();
+  for (const [index, apiKey] of apiKeys.entries()) {
+    try {
+      const groq = getGroqClient(apiKey);
 
-    const response = await groq.chat.completions.create({
-      model: "llama-3.1-8b-instant",
-      messages: [
-        {
-          role: "user",
-          content: `Kamu adalah asisten yang ahli meringkas berita dalam Bahasa Indonesia.
+      const response = await groq.chat.completions.create({
+        model: "llama-3.1-8b-instant",
+        messages: [
+          {
+            role: "user",
+            content: `Kamu adalah asisten yang ahli meringkas berita dalam Bahasa Indonesia.
 
 Tugas: Ringkas berita berikut menjadi 2-4 kalimat yang padat dan informatif.
 
@@ -40,18 +45,22 @@ Berita:
 ${content}
 
 Ringkasan:`,
-        },
-      ],
-      temperature: 0.3,
-      max_tokens: 300,
-    });
+          },
+        ],
+        temperature: 0.3,
+        max_tokens: 300,
+      });
 
-    const summary = response.choices[0].message.content.trim();
-    return summary;
-  } catch (error) {
-    console.error("Groq API error:", error.message);
-    return fallbackSummarize(content);
+      return response.choices[0].message.content.trim();
+    } catch (error) {
+      console.error(
+        `Groq API error on ${index === 0 ? "primary" : "backup"} key:`,
+        error.message,
+      );
+    }
   }
+
+  return fallbackSummarize(content);
 };
 
 // Fallback jika API gagal

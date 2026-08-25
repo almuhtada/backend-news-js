@@ -19,6 +19,7 @@ const Setting = require("./setting");
 const PostViewLog = require("./postViewLog");
 const UserBookmark = require("./userBookmark");
 const RefreshToken = require("./refreshToken");
+const ArticleActivity = require("./articleActivity");
 
 // ========================================
 // Define Relationships
@@ -84,7 +85,10 @@ Post.hasMany(PostTag, { foreignKey: "post_id", as: "postTags" });
 
 // PostCategory direct relationships for querying PostCategory model directly
 PostCategory.belongsTo(Category, { foreignKey: "category_id", as: "category" });
-Category.hasMany(PostCategory, { foreignKey: "category_id", as: "postCategories" });
+Category.hasMany(PostCategory, {
+  foreignKey: "category_id",
+  as: "postCategories",
+});
 PostCategory.belongsTo(Post, { foreignKey: "post_id", as: "post" });
 Post.hasMany(PostCategory, { foreignKey: "post_id", as: "postCategories" });
 
@@ -126,6 +130,11 @@ Comment.belongsTo(Comment, { foreignKey: "parent_id", as: "parent" });
 // Notification - Post (Many-to-One)
 Notification.belongsTo(Post, { foreignKey: "post_id", as: "post" });
 Post.hasMany(Notification, { foreignKey: "post_id", as: "notifications" });
+Post.hasMany(ArticleActivity, {
+  foreignKey: "article_uuid",
+  sourceKey: "uuid",
+  as: "activities",
+});
 
 // ----- PostViewLog Relationships -----
 Post.hasMany(PostViewLog, { foreignKey: "post_id", as: "viewLogs" });
@@ -167,4 +176,5 @@ module.exports = {
   PostViewLog,
   UserBookmark,
   RefreshToken,
+  ArticleActivity,
 };

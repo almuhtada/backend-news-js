@@ -49,7 +49,13 @@ const Notification = sequelize.define(
       comment: "Tingkat prioritas notifikasi",
     },
     category: {
-      type: DataTypes.ENUM("news", "publication", "profile", "system", "achievement"),
+      type: DataTypes.ENUM(
+        "news",
+        "publication",
+        "profile",
+        "system",
+        "achievement",
+      ),
       allowNull: false,
       defaultValue: "news",
       comment: "Kategori notifikasi",
@@ -62,6 +68,14 @@ const Notification = sequelize.define(
         key: "id",
       },
       comment: "ID post terkait (jika ada)",
+    },
+    article_uuid: {
+      type: DataTypes.UUID,
+      allowNull: true,
+    },
+    user_uuid: {
+      type: DataTypes.UUID,
+      allowNull: true,
     },
     createdAt: {
       type: DataTypes.DATE,
@@ -80,7 +94,7 @@ const Notification = sequelize.define(
     tableName: "notifications",
     timestamps: true,
     underscored: true,
-  }
+  },
 );
 
 module.exports = Notification;

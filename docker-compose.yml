@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # MySQL Database
@@ -19,7 +19,17 @@ services:
     networks:
       - news-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD}"]
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u",
+          "root",
+          "-p${DB_PASSWORD}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -42,10 +52,15 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - PORT=${PORT:-3001}
       - GROQ_API_KEY=${GROQ_API_KEY}
+      - BACKUP_API_KEY=${BACKUP_API_KEY}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
       - TELEGRAM_TOPIC_PENULIS=${TELEGRAM_TOPIC_PENULIS}
       - TELEGRAM_TOPIC_EDITOR=${TELEGRAM_TOPIC_EDITOR}
+      - TELEGRAM_TOPIC_ARTIKEL_MASUK=${TELEGRAM_TOPIC_ARTIKEL_MASUK}
+      - TELEGRAM_TOPIC_REVISI_ARTIKEL=${TELEGRAM_TOPIC_REVISI_ARTIKEL}
+      - TELEGRAM_TOPIC_APPROVAL=${TELEGRAM_TOPIC_APPROVAL}
+      - TELEGRAM_TOPIC_SYSTEM_ERROR=${TELEGRAM_TOPIC_SYSTEM_ERROR}
       - BACKEND_URL=${BACKEND_URL}
     ports:
       - "${PORT:-3001}:3001"
@@ -55,7 +70,15 @@ services:
     networks:
       - news-network
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3001/health",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
