@@ -705,6 +705,21 @@ class PostService {
       post_id: post.id,
       article_uuid: post.uuid,
     });
+    const author = await User.findByPk(post.author_id);
+    await sendTelegramMessage({
+      topic: "REVISI_ARTIKEL",
+      useHtml: true,
+      text:
+        `⚠️ <b>REVISI ARTIKEL</b>\n\n` +
+        `📌 <b>Judul:</b> ${post.title}\n` +
+        `✍️ <b>Penulis:</b> ${author ? author.username : "Unknown"}\n` +
+        `👤 <b>Editor:</b> ${user.username}\n` +
+        `💬 <b>Catatan Revisi:</b> ${comment || "Mohon lakukan revisi sesuai catatan editor."}\n` +
+        `⏰ <b>Waktu:</b> ${new Date().toLocaleString("id-ID")}\n\n` +
+        `🟠 <b>Status:</b> <i>REVISION REQUIRED (Kembali ke Draft)</i>`
+    }).catch((err) => {
+      console.error("Telegram revision notification failed:", err);
+    });
     return post;
   }
 
