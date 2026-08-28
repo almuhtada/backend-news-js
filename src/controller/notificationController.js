@@ -12,6 +12,7 @@ exports.getAllNotifications = async (req, res) => {
       status,
       category,
       search,
+      workflow_status,
       sort = "createdAt",
       order = "DESC",
     } = req.query;
@@ -65,6 +66,14 @@ exports.getAllNotifications = async (req, res) => {
         ? { where: { author_id: req.user.id } }
         : {}),
     };
+
+    // Add workflow_status filter on post include
+    if (workflow_status) {
+      postInclude.where = {
+        ...postInclude.where,
+        workflow_status: workflow_status,
+      };
+    }
 
     const { count, rows: notifications } = await Notification.findAndCountAll({
       where,

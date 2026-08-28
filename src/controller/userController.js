@@ -115,7 +115,7 @@ const createUser = async (req, res) => {
 const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { username, email, role, password } = req.body;
+    const { username, email, role, password, display_name } = req.body;
 
     const user = await User.findOne({ where: { uuid: id } });
     if (!user) {
@@ -142,6 +142,11 @@ const updateUser = async (req, res) => {
       email: email.trim(),
       role,
     };
+
+    // Add display_name if provided
+    if (display_name !== undefined) {
+      updateData.display_name = display_name?.trim() || null;
+    }
 
     // Hash new password if provided
     if (password && password.trim()) {
