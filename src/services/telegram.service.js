@@ -80,20 +80,41 @@ async function sendTelegramMessage({ topic, text, useHtml = false }) {
     payload.parse_mode = "HTML";
   }
 
-  const response = await fetch(`${TELEGRAM_API}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
-  const data = await response.json();
+    const response = await fetch(`${TELEGRAM_API}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
 
-  if (!data.ok) {
-    console.error("[Telegram] API error:", JSON.stringify(data));
-    throw new Error(data.description || "Telegram API error");
+    clearTimeout(timeoutId);
+
+    const data = await response.json();
+
+    if (!data.ok) {
+      console.error("[Telegram] API error:", JSON.stringify(data));
+      console.error("[Telegram] Payload was:", JSON.stringify(payload));
+      throw new Error(data.description || "Telegram API error");
+    }
+
+    console.log(`[Telegram] Message sent to topic ${topicId}:`, {
+      messageId: data.result?.message_id,
+      topic: topic,
+    });
+
+    return data;
+  } catch (error) {
+    if (error.name === "AbortError") {
+      console.error("[Telegram] Request timeout after 5 seconds");
+      throw new Error("Telegram API request timeout");
+    }
+    console.error("[Telegram] Send message error:", error.message);
+    throw error;
   }
-
-  return data;
 }
 
 module.exports = { sendTelegramMessage, escapeMarkdown, escapeHtml };

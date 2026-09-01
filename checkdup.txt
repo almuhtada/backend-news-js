@@ -1,0 +1,237 @@
+[dotenv@17.2.3] injecting env (23) from .env -- tip: ΓÜÖ∩╕Å  suppress all logs with { quiet: true }
+[dotenv@17.2.3] injecting env (0) from .env -- tip: Γ£à audit secrets and track compliance: https://dotenvx.com/ops
+[START] Checking duplicate drafts...
+
+≡ƒôè Total draft posts: 112
+
+≡ƒôï DUPLICATES BY TITLE:
+========================
+
+≡ƒö┤ Title: "bagaimana batasan dalam mencintai dunia, simak penjelasan berikut ini"
+   Count: 2 posts
+
+   1. [4413] UUID: 6ca19be6...
+      Slug: bagaimana-batasan-dalam-mencintai-dunia-simak-penjelasan-berikut-ini-1787497775163
+      Author: Hanum Salsabila (ID: 28)
+      Status: SUBMITTED
+      Created: 23/8/2026, 22.09.35
+   2. [4412] UUID: 19b87552...
+      Slug: bagaimana-batasan-dalam-mencintai-dunia-simak-penjelasan-berikut-ini
+      Author: Hanum Salsabila (ID: 28)
+      Status: SUBMITTED
+      Created: 23/8/2026, 22.06.24
+
+≡ƒö┤ Title: "dulu kedua orang tua-lah yang menuntun langkah kita, kini giliran kita untuk menjaga mereka"
+   Count: 2 posts
+
+   1. [4500] UUID: cd16cd63...
+      Slug: dulu-kedua-orang-tua-lah-yang-menuntun-langkah-kita-kini-giliran-kita-untuk-menjaga-mereka-1788119925399
+      Author: Muhammad Khoirul Anwar (ID: 31)
+      Status: SUBMITTED
+      Created: 31/8/2026, 02.58.45
+   2. [4499] UUID: 11b950f7...
+      Slug: dulu-kedua-orang-tua-lah-yang-menuntun-langkah-kita-kini-giliran-kita-untuk-menjaga-mereka-1788119085304
+      Author: Muhammad Khoirul Anwar (ID: 31)
+      Status: SUBMITTED
+      Created: 31/8/2026, 02.44.45
+
+≡ƒö┤ Title: "kecil, hijau, tapi berdampak besar: mengapa tumbuhan berdampak penting?"
+   Count: 2 posts
+
+   1. [4432] UUID: ee902f04...
+      Slug: kecil-hijau-tapi-berdampak-besar-mengapa-tumbuhan-berdampak-penting-1787505280944
+      Author: Dinda Fitri Nasyiatul Mawadah (ID: 56)
+      Status: SUBMITTED
+      Created: 24/8/2026, 00.14.41
+   2. [4431] UUID: 12c76a95...
+      Slug: kecil-hijau-tapi-berdampak-besar-mengapa-tumbuhan-berdampak-penting
+      Author: Dinda Fitri Nasyiatul Mawadah (ID: 56)
+      Status: SUBMITTED
+      Created: 24/8/2026, 00.08.36
+
+≡ƒö┤ Title: "kolerasi psikoanalisis dengan agama islam"
+   Count: 2 posts
+
+   1. [4411] UUID: 199d47c7...
+      Slug: kolerasi-psikoanalisis-dengan-agama-islam-1787497458478
+      Author: Ahkmad Maulana Marzuki (ID: 33)
+      Status: SUBMITTED
+      Created: 23/8/2026, 22.04.18
+   2. [4410] UUID: 90599514...
+      Slug: kolerasi-psikoanalisis-dengan-agama-islam
+      Author: Ahkmad Maulana Marzuki (ID: 33)
+      Status: SUBMITTED
+      Created: 23/8/2026, 21.59.11
+
+≡ƒö┤ Title: "multitalenta: berkah yang membingungkan atau kutukan yang disyukuri?"
+   Count: 2 posts
+
+   1. [4479] UUID: 80473534...
+      Slug: multitalenta-berkah-yang-membingungkan-atau-kutukan-yang-disyukuri-1788102723271
+      Author: Salsabila Azzahra Nur Rila (ID: 50)
+      Status: SUBMITTED
+      Created: 30/8/2026, 22.12.03
+   2. [4475] UUID: 8b114577...
+      Slug: multitalenta-berkah-yang-membingungkan-atau-kutukan-yang-disyukuri
+      Author: Salsabila Azzahra Nur Rila (ID: 50)
+      Status: SUBMITTED
+      Created: 30/8/2026, 21.47.28
+
+≡ƒö┤ Title: "pernah merasa? mengapa kita lebih mudah mengingat kesalahan orang daripada kebaikannya?"
+   Count: 10 posts
+
+   1. [4460] UUID: 1549dfc5...
+      Slug: pernah-merasa-mengapa-kita-lebih-mudah-mengingat-kesalahan-orang-daripada-kebaikannya-1787715352253
+      Author: Abian Hilmi Hidayat (ID: 27)
+      Status: SUBMITTED
+      Created: 26/8/2026, 10.35.52
+   2. [4459] UUID: b999cb55...
+      Slug: pernah-merasa-mengapa-kita-lebih-mudah-mengingat-kesalahan-orang-daripada-kebaikannya-1787715329098
+      Author: Abian Hilmi Hidayat (ID: 27)
+      Status: SUBMITTED
+      Created: 26/8/2026, 10.35.29
+   3. [4458] UUID: 9a0ba681...
+      Slug: pernah-merasa-mengapa-kita-lebih-mudah-mengingat-kesalahan-orang-daripada-kebaikannya-1787715312641
+      Author: Abian Hilmi Hidayat (ID: 27)
+      Status: SUBMITTED
+      Created: 26/8/2026, 10.35.12
+   4. [4456] UUID: 8bd92c47...
+      Slug: pernah-merasa-mengapa-kita-lebih-mudah-mengingat-kesalahan-orang-daripada-kebaikannya-1787715225003
+      Author: Abian Hilmi Hidayat (ID: 27)
+      Status: SUBMITTED
+      Created: 26/8/2026, 10.33.45
+   5. [4455] UUID: 14003e11...
+      Slug: pernah-merasa-mengapa-kita-lebih-mudah-mengingat-kesalahan-orang-daripada-kebaikannya-1787715196631
+      Author: Abian Hilmi Hidayat (ID: 27)
+      Status: SUBMITTED
+      Created: 26/8/2026, 10.33.16
+   6. [4454] UUID: 60ff8252...
+      Slug: pernah-merasa-mengapa-kita-lebih-mudah-mengingat-kesalahan-orang-daripada-kebaikannya-1787715181949
+      Author: Abian Hilmi Hidayat (ID: 27)
+      Status: SUBMITTED
+      Created: 26/8/2026, 10.33.02
+   7. [4453] UUID: 2c9d73c0...
+      Slug: pernah-merasa-mengapa-kita-lebih-mudah-mengingat-kesalahan-orang-daripada-kebaikannya-1787706523692
+      Author: Abian Hilmi Hidayat (ID: 27)
+      Status: SUBMITTED
+      Created: 26/8/2026, 08.08.43
+   8. [4452] UUID: b6497f8a...
+      Slug: pernah-merasa-mengapa-kita-lebih-mudah-mengingat-kesalahan-orang-daripada-kebaikannya-1787706505926
+      Author: Abian Hilmi Hidayat (ID: 27)
+      Status: SUBMITTED
+      Created: 26/8/2026, 08.08.26
+   9. [4451] UUID: 1f03316b...
+      Slug: pernah-merasa-mengapa-kita-lebih-mudah-mengingat-kesalahan-orang-daripada-kebaikannya-1787706482281
+      Author: Abian Hilmi Hidayat (ID: 27)
+      Status: SUBMITTED
+      Created: 26/8/2026, 08.08.02
+   10. [4450] UUID: 14c62b70...
+      Slug: pernah-merasa-mengapa-kita-lebih-mudah-mengingat-kesalahan-orang-daripada-kebaikannya
+      Author: Abian Hilmi Hidayat (ID: 27)
+      Status: SUBMITTED
+      Created: 26/8/2026, 08.06.28
+
+≡ƒö┤ Title: "tes"
+   Count: 2 posts
+
+   1. [4461] UUID: 191b0f11...
+      Slug: tes-1787951415052
+      Author: alpha (ID: 23)
+      Status: REVISION_REQUIRED
+      Created: 29/8/2026, 04.10.16
+   2. [4392] UUID: 667d29eb...
+      Slug: tes
+      Author: alpha (ID: 23)
+      Status: SUBMITTED
+      Created: 23/8/2026, 19.25.46
+
+≡ƒö┤ Title: "test"
+   Count: 2 posts
+
+   1. [4518] UUID: fd596236...
+      Slug: test-1788238477684
+      Author: alpha (ID: 23)
+      Status: REVISION_REQUIRED
+      Created: 1/9/2026, 11.54.38
+   2. [4517] UUID: 7e0bc5c9...
+      Slug: test
+      Author: alpha (ID: 23)
+      Status: REVISION_REQUIRED
+      Created: 1/9/2026, 11.47.48
+
+
+≡ƒôï DUPLICATES BY SLUG:
+======================
+
+
+≡ƒôï POSTS WITH MULTIPLE NOTIFICATIONS:
+======================================
+
+[ERROR] Error
+    at Query.run (C:\Users\muham\Desktop\almuhtada\backend-news-js\node_modules\sequelize\lib\dialects\mysql\query.js:52:25)
+    at C:\Users\muham\Desktop\almuhtada\backend-news-js\node_modules\sequelize\lib\sequelize.js:315:28
+    at async checkDuplicateDrafts (C:\Users\muham\Desktop\almuhtada\backend-news-js\scripts\check-duplicate-drafts.js:110:25) {
+  name: 'SequelizeDatabaseError',
+  parent: Error: Table 'almuhtada_db.Notifications' doesn't exist
+      at Packet.asError (C:\Users\muham\Desktop\almuhtada\backend-news-js\node_modules\mysql2\lib\packets\packet.js:740:17)
+      at Query.execute (C:\Users\muham\Desktop\almuhtada\backend-news-js\node_modules\mysql2\lib\commands\command.js:29:26)
+      at Connection.handlePacket (C:\Users\muham\Desktop\almuhtada\backend-news-js\node_modules\mysql2\lib\base\connection.js:508:34)
+      at PacketParser.onPacket (C:\Users\muham\Desktop\almuhtada\backend-news-js\node_modules\mysql2\lib\base\connection.js:93:12)
+      at PacketParser.executeStart (C:\Users\muham\Desktop\almuhtada\backend-news-js\node_modules\mysql2\lib\packet_parser.js:75:16)
+      at Socket.<anonymous> (C:\Users\muham\Desktop\almuhtada\backend-news-js\node_modules\mysql2\lib\base\connection.js:100:25)
+      at Socket.emit (node:events:518:28)
+      at addChunk (node:internal/streams/readable:561:12)
+      at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+      at Readable.push (node:internal/streams/readable:392:5) {
+    code: 'ER_NO_SUCH_TABLE',
+    errno: 1146,
+    sqlState: '42S02',
+    sqlMessage: "Table 'almuhtada_db.Notifications' doesn't exist",
+    sql: 'SELECT \n' +
+      '        article_uuid,\n' +
+      '        COUNT(*) as notification_count,\n' +
+      '        GROUP_CONCAT(id ORDER BY id DESC) as notification_ids\n' +
+      '      FROM Notifications\n' +
+      '      WHERE article_uuid IS NOT NULL\n' +
+      '      GROUP BY article_uuid\n' +
+      '      HAVING COUNT(*) > 1\n' +
+      '      ORDER BY notification_count DESC',
+    parameters: undefined
+  },
+  original: Error: Table 'almuhtada_db.Notifications' doesn't exist
+      at Packet.asError (C:\Users\muham\Desktop\almuhtada\backend-news-js\node_modules\mysql2\lib\packets\packet.js:740:17)
+      at Query.execute (C:\Users\muham\Desktop\almuhtada\backend-news-js\node_modules\mysql2\lib\commands\command.js:29:26)
+      at Connection.handlePacket (C:\Users\muham\Desktop\almuhtada\backend-news-js\node_modules\mysql2\lib\base\connection.js:508:34)
+      at PacketParser.onPacket (C:\Users\muham\Desktop\almuhtada\backend-news-js\node_modules\mysql2\lib\base\connection.js:93:12)
+      at PacketParser.executeStart (C:\Users\muham\Desktop\almuhtada\backend-news-js\node_modules\mysql2\lib\packet_parser.js:75:16)
+      at Socket.<anonymous> (C:\Users\muham\Desktop\almuhtada\backend-news-js\node_modules\mysql2\lib\base\connection.js:100:25)
+      at Socket.emit (node:events:518:28)
+      at addChunk (node:internal/streams/readable:561:12)
+      at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+      at Readable.push (node:internal/streams/readable:392:5) {
+    code: 'ER_NO_SUCH_TABLE',
+    errno: 1146,
+    sqlState: '42S02',
+    sqlMessage: "Table 'almuhtada_db.Notifications' doesn't exist",
+    sql: 'SELECT \n' +
+      '        article_uuid,\n' +
+      '        COUNT(*) as notification_count,\n' +
+      '        GROUP_CONCAT(id ORDER BY id DESC) as notification_ids\n' +
+      '      FROM Notifications\n' +
+      '      WHERE article_uuid IS NOT NULL\n' +
+      '      GROUP BY article_uuid\n' +
+      '      HAVING COUNT(*) > 1\n' +
+      '      ORDER BY notification_count DESC',
+    parameters: undefined
+  },
+  sql: 'SELECT \n' +
+    '        article_uuid,\n' +
+    '        COUNT(*) as notification_count,\n' +
+    '        GROUP_CONCAT(id ORDER BY id DESC) as notification_ids\n' +
+    '      FROM Notifications\n' +
+    '      WHERE article_uuid IS NOT NULL\n' +
+    '      GROUP BY article_uuid\n' +
+    '      HAVING COUNT(*) > 1\n' +
+    '      ORDER BY notification_count DESC',
+  parameters: {}
+}

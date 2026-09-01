@@ -59,26 +59,55 @@ exports.getPopularTags = async (req, res) => {
   }
 };
 
-// Create new tag
+// Create new tag (or return existing if already exists)
 exports.createTag = async (req, res) => {
   try {
     const { name, slug, description } = req.body;
 
-    if (!name) {
+    if (!name || !name.trim()) {
       return res.status(400).json({
         success: false,
         message: "Tag name is required",
       });
     }
 
-    const tag = await Tag.create({
-      name,
-      slug: slug || name.toLowerCase().replace(/\s+/g, "-"),
-      description,
+    const cleanName = name.trim();
+    const tagSlug =
+      slug ||
+      cleanName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "") ||
+      `tag-${Date.now()}`;
+
+    // Find existing tag by name (case-insensitive) or slug
+    const { Op } = require("sequelize");
+    let tag = await Tag.findOne({
+      where: {
+        [Op.or]: [
+          sequelize.where(
+            sequelize.fn("LOWER", sequelize.col("name")),
+            cleanName.toLowerCase(),
+          ),
+          { slug: tagSlug },
+        ],
+      },
     });
 
-    clearTagsCache();
-    res.status(201).json({
+    if (!tag) {
+      tag = await Tag.create({
+        name: cleanName,
+        slug: tagSlug,
+        description: description || null,
+      });
+      clearTagsCache();
+      return res.status(201).json({
+        success: true,
+        data: tag,
+      });
+    }
+
+    return res.status(200).json({
       success: true,
       data: tag,
     });

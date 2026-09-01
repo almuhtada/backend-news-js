@@ -200,7 +200,7 @@ exports.updateNotificationStatus = async (req, res) => {
     const { id } = req.params;
     const { status, post_status, rejection_reason } = req.body;
 
-    // Frontend mengirim uuid, kadang juga id numerik. Duk kedua-duanya.
+    // Frontend mengirim uuid, kadang juga id numerik. Dukung kedua-duanya.
     const notification = await Notification.findOne({
       where: {
         [Op.or]: [{ id }, { uuid: id }],
@@ -214,7 +214,15 @@ exports.updateNotificationStatus = async (req, res) => {
       });
     }
 
-    const articleUuid = notification.article_uuid;
+    let articleUuid = notification.article_uuid;
+    if (!articleUuid && notification.post_id) {
+      const p = await Post.findByPk(notification.post_id);
+      if (p) {
+        articleUuid = p.uuid;
+        await notification.update({ article_uuid: p.uuid });
+      }
+    }
+
     if (articleUuid && status === "approved") {
       // postService.approveArticle already handles:
       // - updating post status to APPROVED then PUBLISHED
@@ -228,6 +236,7 @@ exports.updateNotificationStatus = async (req, res) => {
       await notification.update({ status: "approved" });
       return res.json({ success: true, data: approvedPost });
     }
+
     if (articleUuid && status === "rejected") {
       const revisedPost = await postService.requestRevision(
         articleUuid,
@@ -269,11 +278,6 @@ exports.updateNotificationStatus = async (req, res) => {
         });
       }
     }
-    const author = post ? await User.findByPk(post.author_id) : null;
-    const editorName = req.user?.username || "Editor";
-
-    // Telegram notifications are now handled by postService methods
-    // No duplicate sending here to ensure data consistency
 
     // Fetch updated notification with post
     const updatedNotification = await Notification.findByPk(notification.id, {

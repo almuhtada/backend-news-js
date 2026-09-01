@@ -8,7 +8,7 @@ const {
 } = require("../schema");
 const { Op } = require("sequelize");
 const { generateSummary } = require("./summarizer.service");
-const { sendTelegramMessage } = require("./telegram.service");
+const { sendTelegramMessage, escapeHtml } = require("./telegram.service");
 const { NotFoundError, BadRequestError, ForbiddenError } = require("../utils");
 const { parsePagination } = require("../utils");
 const recommendationService = require("./recommendation.service");
@@ -302,6 +302,24 @@ class PostService {
       }
     }
 
+    // 🔴 DUPLICATE CHECK: Jika penulis punya post dengan title sama dalam REVISION_REQUIRED,
+    // UPDATE yang lama daripada bikin baru (prevent duplicate saat resubmit after rejection)
+    const existingRevisionPost = await Post.findOne({
+      where: {
+        title,
+        author_id: postAuthorId,
+        workflow_status: WORKFLOW.REVISION_REQUIRED,
+      },
+    });
+
+    if (existingRevisionPost) {
+      console.log(
+        `[CREATE_POST] Found existing REVISION_REQUIRED post, updating instead of creating new: ${existingRevisionPost.uuid}`,
+      );
+      // Update existing post instead of creating new
+      return this.updatePost(existingRevisionPost.uuid, data, user);
+    }
+
     // Editor (opsional): resolve dari uuid
     let postEditorId = null;
     if (requestedEditorUuid) {
@@ -392,35 +410,18 @@ class PostService {
       ],
     });
 
-    // Update or Create Notification agar tidak duplikat untuk satu artikel
-    const existingNotification = await Notification.findOne({
-      where: { article_uuid: post.uuid },
+    // Pastikan hanya ada 1 notifikasi per artikel. Jangan bikin add/edit terpisah.
+    await this.upsertNotificationForArticle(post, {
+      user_name: author ? author.username : "Unknown User",
+      action: "add",
+      target: title,
+      status: "pending",
+      description: summary || excerpt || `Berita baru ditambahkan: ${title}`,
+      priority: "medium",
+      category: "news",
+      post_id: post.id,
+      user_uuid: author?.uuid,
     });
-    if (existingNotification) {
-      await existingNotification.update({
-        user_name: author ? author.username : "Unknown User",
-        action: "add",
-        target: title,
-        status: "pending",
-        description: summary || excerpt || `Berita baru ditambahkan: ${title}`,
-        priority: "medium",
-        category: "news",
-        user_uuid: author?.uuid,
-      });
-    } else {
-      await Notification.create({
-        user_name: author ? author.username : "Unknown User",
-        action: "add",
-        target: title,
-        status: "pending",
-        description: summary || excerpt || `Berita baru ditambahkan: ${title}`,
-        priority: "medium",
-        category: "news",
-        post_id: post.id,
-        article_uuid: post.uuid,
-        user_uuid: author?.uuid,
-      });
-    }
 
     // Send Telegram Notification (non-blocking)
     const frontendUrl = process.env.FRONTEND_URL || "https://almuhtada.org";
@@ -429,11 +430,11 @@ class PostService {
       useHtml: true,
       text:
         `📝 <b>Berita Baru Dikirim</b>\n\n` +
-        `📌 <b>Judul:</b> ${post.title}\n` +
-        `✍️ <b>Penulis:</b> ${author ? author.username : "Unknown"}\n` +
+        `📌 <b>Judul:</b> ${escapeHtml(post.title)}\n` +
+        `✍️ <b>Penulis:</b> ${escapeHtml(author ? author.username : "Unknown")}\n` +
         `⏰ <b>Waktu:</b> ${new Date().toLocaleString("id-ID")}\n\n` +
         `🟢 <b>Status:</b> <i>Menunggu review editor</i>\n` +
-        `🔍 <a href="${frontendUrl}/detail-news/${post.slug}"><b>Lihat Lengkap</b></a>`,
+        `🔍 <a href="${frontendUrl}/detail-news/${encodeURIComponent(post.slug)}"><b>Lihat Lengkap</b></a>`,
     }).catch((err) => console.error("Telegram notification failed:", err));
 
     return createdPost;
@@ -484,17 +485,30 @@ class PostService {
 
     if (
       user?.role === "author" &&
-      ![WORKFLOW.REVISION_REQUIRED, undefined].includes(post.workflow_status)
+      ![
+        WORKFLOW.REVISION_REQUIRED,
+        WORKFLOW.SUBMITTED,
+        WORKFLOW.RESUBMITTED,
+        undefined,
+        null,
+        "",
+      ].includes(post.workflow_status) &&
+      post.status !== "draft"
     ) {
-      throw new ForbiddenError("Author can only edit posts requiring revision");
+      throw new ForbiddenError(
+        "Author can only edit posts requiring revision or drafts",
+      );
     }
 
     if (
       status !== undefined &&
       status !== post.status &&
-      user?.role !== "administrator"
+      user?.role !== "administrator" &&
+      user?.role !== "editor"
     ) {
-      throw new ForbiddenError("Only administrators can change post status");
+      throw new ForbiddenError(
+        "Only administrators and editors can change post status",
+      );
     }
 
     // Resolve penulis/editor dari uuid jika admin mengubahnya.
@@ -518,6 +532,12 @@ class PostService {
     // Update post fields. Jika user yang mengedit berbeda dari author,
     // catat sebagai editor terakhir.
     const isSameAuthor = user && post.author_id === user.id;
+    const previousWorkflow = post.workflow_status;
+    let newWorkflowStatus = post.workflow_status;
+    if (post.workflow_status === WORKFLOW.REVISION_REQUIRED) {
+      newWorkflowStatus = WORKFLOW.RESUBMITTED;
+    }
+
     await post.update({
       title: title || post.title,
       slug: slug || post.slug,
@@ -528,6 +548,7 @@ class PostService {
       image_caption:
         image_caption !== undefined ? image_caption : post.image_caption,
       status: status || post.status,
+      workflow_status: newWorkflowStatus,
       published_at:
         status === "publish" && !post.published_at
           ? new Date()
@@ -541,6 +562,17 @@ class PostService {
             ? user.id
             : post.editor_id,
     });
+
+    if (previousWorkflow === WORKFLOW.REVISION_REQUIRED) {
+      await this.addActivity(
+        post,
+        user,
+        "RESUBMITTED",
+        WORKFLOW.RESUBMITTED,
+        "Artikel telah diperbarui setelah revisi.",
+        WORKFLOW.REVISION_REQUIRED,
+      );
+    }
 
     // Update categories if provided
     if (category_ids) {
@@ -571,22 +603,80 @@ class PostService {
       ],
     });
 
-    // Create notification for the updated post
+    // Create or update notification for the updated post
     const author = await User.findByPk(post.author_id);
-    await Notification.create({
+    const isAlreadyApproved =
+      post.status === "publish" ||
+      [WORKFLOW.APPROVED, WORKFLOW.PUBLISHED].includes(previousWorkflow);
+
+    // Status notifikasi yang sesuai:
+    // Jika artikel sudah dipublikasikan/disetujui sebelumnya dan diedit (misal koreksi typo oleh admin/editor),
+    // jangan kembalikan status notifikasinya ke "pending", tetap "approved"!
+    // Hanya jika artikel tadinya dalam status revisi yang dikirim ulang atau draf baru yang diedit oleh author,
+    // status notifikasinya adalah "pending".
+    let notifStatus = "pending";
+    if (isAlreadyApproved && previousWorkflow !== WORKFLOW.REVISION_REQUIRED) {
+      notifStatus = "approved";
+    }
+
+    const notifDesc =
+      previousWorkflow === WORKFLOW.REVISION_REQUIRED
+        ? `Revisi terkirim: ${post.title}`
+        : isAlreadyApproved
+          ? `Berita diperbarui: ${post.title}`
+          : `Draf diperbarui: ${post.title}`;
+
+    await this.upsertNotificationForArticle(post, {
       user_name: author ? author.username : "Unknown User",
       action: "edit",
       target: post.title,
-      status: "pending",
-      description: `Berita diperbarui: ${post.title}`,
+      status: notifStatus,
+      description: notifDesc,
       priority: "medium",
       category: "news",
       post_id: post.id,
-      article_uuid: post.uuid,
       user_uuid: user?.uuid || author?.uuid,
     });
 
     return updatedPost;
+  }
+
+  async upsertNotificationForArticle(post, payload) {
+    const notifications = await Notification.findAll({
+      where: { article_uuid: post.uuid },
+      order: [["created_at", "ASC"]],
+    });
+
+    if (notifications.length > 1) {
+      const [primary, ...duplicates] = notifications;
+      await Promise.all(
+        duplicates.map((notif) =>
+          Notification.destroy({ where: { id: notif.id } }),
+        ),
+      );
+      await primary.update({
+        ...payload,
+        article_uuid: post.uuid,
+        post_id: post.id,
+      });
+      return primary;
+    }
+
+    if (notifications.length === 1) {
+      const existing = notifications[0];
+      await existing.update({
+        ...payload,
+        article_uuid: post.uuid,
+        post_id: post.id,
+      });
+      return existing;
+    }
+
+    return Notification.create({
+      ...payload,
+      article_uuid: post.uuid,
+      post_id: post.id,
+    });
   }
 
   async addActivity(
@@ -615,10 +705,22 @@ class PostService {
 
   async submitRevision(articleUuid, user) {
     const post = await this.getWorkflowPost(articleUuid);
-    if (user?.role !== "author" || post.author_id !== user.id) {
-      throw new ForbiddenError("Only the article author can submit a revision");
+    const isAuthor = user?.role === "author" && post.author_id === user.id;
+    const isStaff = ["administrator", "editor"].includes(user?.role);
+    if (!isAuthor && !isStaff) {
+      throw new ForbiddenError(
+        "Only the article author or editor can submit a revision",
+      );
     }
-    if (post.workflow_status !== WORKFLOW.REVISION_REQUIRED) {
+    if (
+      ![
+        WORKFLOW.REVISION_REQUIRED,
+        WORKFLOW.SUBMITTED,
+        WORKFLOW.RESUBMITTED,
+        null,
+        undefined,
+      ].includes(post.workflow_status)
+    ) {
       throw new ForbiddenError(
         "Only posts requiring revision can be resubmitted",
       );
@@ -633,46 +735,28 @@ class PostService {
       null,
       before,
     );
-    const notif = await Notification.findOne({
-      where: { article_uuid: post.uuid },
+    await this.upsertNotificationForArticle(post, {
+      user_name: user?.username || "Author",
+      user_uuid: user?.uuid || null,
+      action: "edit",
+      target: post.title,
+      status: "pending",
+      description:
+        "Author telah mengirim revisi dan artikel siap diperiksa kembali.",
+      priority: "medium",
+      category: "news",
+      post_id: post.id,
     });
-    if (notif) {
-      await notif.update({
-        user_name: user.username,
-        user_uuid: user.uuid,
-        action: "edit",
-        target: post.title,
-        status: "pending",
-        description:
-          "Author telah mengirim revisi dan artikel siap diperiksa kembali.",
-        priority: "medium",
-        category: "news",
-      });
-    } else {
-      await Notification.create({
-        user_name: user.username,
-        user_uuid: user.uuid,
-        action: "edit",
-        target: post.title,
-        status: "pending",
-        description:
-          "Author telah mengirim revisi dan artikel siap diperiksa kembali.",
-        priority: "medium",
-        category: "news",
-        post_id: post.id,
-        article_uuid: post.uuid,
-      });
-    }
     await sendTelegramMessage({
       topic: "REVISI_ARTIKEL",
       useHtml: true,
       text:
         `📥 <b>REVISI ARTIKEL DIKIRIM ULANG</b>\n\n` +
-        `📌 <b>Judul:</b> ${post.title}\n` +
-        `✍️ <b>Penulis:</b> ${user.username}\n` +
+        `📌 <b>Judul:</b> ${escapeHtml(post.title)}\n` +
+        `✍️ <b>Penulis:</b> ${escapeHtml(user?.username || "Author")}\n` +
         `⏰ <b>Waktu:</b> ${new Date().toLocaleString("id-ID")}\n\n` +
         `🔄 <b>Status:</b> <i>Revisi Telah Terkirim (Menunggu Review Editor)</i>\n` +
-        `🔍 <a href="${process.env.FRONTEND_URL || "https://almuhtada.org"}/detail-news/${post.slug}"><b>Lihat Artikel</b></a>`,
+        `🔍 <a href="${process.env.FRONTEND_URL || "https://almuhtada.org"}/detail-news/${encodeURIComponent(post.slug)}"><b>Lihat Artikel</b></a>`,
     }).catch(() => {});
     return post;
   }
@@ -682,8 +766,18 @@ class PostService {
       throw new ForbiddenError("Only an editor can review an article");
     }
     const post = await this.getWorkflowPost(articleUuid);
+    if (post.workflow_status === WORKFLOW.IN_REVIEW) {
+      return post;
+    }
     if (
-      ![WORKFLOW.SUBMITTED, WORKFLOW.RESUBMITTED].includes(post.workflow_status)
+      ![
+        WORKFLOW.SUBMITTED,
+        WORKFLOW.RESUBMITTED,
+        WORKFLOW.REVISION_REQUIRED,
+        null,
+        undefined,
+        "",
+      ].includes(post.workflow_status)
     ) {
       throw new ForbiddenError("Article is not waiting for review");
     }
@@ -705,13 +799,6 @@ class PostService {
       throw new ForbiddenError("Only an editor can request revision");
     }
     const post = await this.getWorkflowPost(articleUuid);
-    if (
-      ![WORKFLOW.SUBMITTED, WORKFLOW.IN_REVIEW, WORKFLOW.RESUBMITTED].includes(
-        post.workflow_status,
-      )
-    ) {
-      throw new ForbiddenError("Article is not currently under review");
-    }
     const before = post.workflow_status;
     await post.update({
       workflow_status: WORKFLOW.REVISION_REQUIRED,
@@ -727,53 +814,47 @@ class PostService {
       comment,
       before,
     );
-    const notif = await Notification.findOne({
-      where: { article_uuid: post.uuid },
+    await this.upsertNotificationForArticle(post, {
+      user_name: user?.username || "Editor",
+      user_uuid: user?.uuid || null,
+      action: "edit",
+      target: post.title,
+      status: "rejected",
+      description: comment || "Artikel memerlukan revisi.",
+      priority: "high",
+      category: "news",
+      post_id: post.id,
     });
-    if (notif) {
-      await notif.update({
-        user_name: user.username,
-        user_uuid: user.uuid,
-        action: "edit",
-        target: post.title,
-        status: "rejected",
-        description: comment || "Artikel memerlukan revisi.",
-        priority: "high",
-        category: "news",
-      });
-    } else {
-      await Notification.create({
-        user_name: user.username,
-        user_uuid: user.uuid,
-        action: "edit",
-        target: post.title,
-        status: "rejected",
-        description: comment || "Artikel memerlukan revisi.",
-        priority: "high",
-        category: "news",
-        post_id: post.id,
-        article_uuid: post.uuid,
-      });
-    }
     const author = await User.findByPk(post.author_id);
-    const revisionCatatan = comment || "Mohon lakukan revisi sesuai catatan editor.";
+    const revisionCatatan =
+      comment || "Mohon lakukan revisi sesuai catatan editor.";
     const frontendUrl = process.env.FRONTEND_URL || "https://almuhtada.org";
 
-    await sendTelegramMessage({
+    // Send Telegram notification for revision request (non-blocking)
+    sendTelegramMessage({
       topic: "REVISI_ARTIKEL",
       useHtml: true,
       text:
         `⚠️ <b>PERMINTAAN REVISI ARTIKEL</b>\n\n` +
-        `📌 <b>Judul:</b> ${post.title}\n` +
-        `✍️ <b>Penulis:</b> ${author ? author.username : "Unknown"}\n` +
-        `👤 <b>Editor:</b> ${user.username}\n` +
+        `📌 <b>Judul:</b> ${escapeHtml(post.title)}\n` +
+        `✍️ <b>Penulis:</b> ${escapeHtml(author ? author.username : "Unknown")}\n` +
+        `👤 <b>Editor:</b> ${escapeHtml(user?.username || "Editor")}\n` +
         `⏰ <b>Waktu:</b> ${new Date().toLocaleString("id-ID")}\n\n` +
         `📝 <b>Alasan / Catatan Revisi:</b>\n` +
-        `<i>"${revisionCatatan}"</i>\n\n` +
+        `<i>"${escapeHtml(revisionCatatan)}"</i>\n\n` +
         `🔴 <b>Status:</b> <i>Dikembalikan ke Draft (Perlu Revisi)</i>\n` +
-        `🔍 <a href="${frontendUrl}/detail-news/${post.slug}"><b>Lihat Detail Artikel</b></a>`,
+        `🔍 <a href="${frontendUrl}/detail-news/${encodeURIComponent(post.slug)}"><b>Lihat Detail Artikel</b></a>`,
     }).catch((err) => {
-      console.error("Telegram revision notification failed:", err);
+      console.error(
+        "[Telegram] Revision notification failed:",
+        err.message || err,
+      );
+      this.logSystemError("Telegram revision notification failed", err, {
+        articleUuid: post.uuid,
+        postTitle: post.title,
+        editorUuid: user?.uuid,
+        type: "REVISI_ARTIKEL",
+      });
     });
     return post;
   }
@@ -783,19 +864,12 @@ class PostService {
       throw new ForbiddenError("Only an editor can approve an article");
     }
     const post = await this.getWorkflowPost(articleUuid);
-    if (
-      ![WORKFLOW.SUBMITTED, WORKFLOW.IN_REVIEW, WORKFLOW.RESUBMITTED].includes(
-        post.workflow_status,
-      )
-    ) {
-      throw new ForbiddenError("Article is not currently under review");
-    }
     const before = post.workflow_status;
     const approvedAt = new Date();
     await post.update({
       workflow_status: WORKFLOW.APPROVED,
       status: "publish",
-      approved_by_user_uuid: user.uuid,
+      approved_by_user_uuid: user?.uuid || null,
       approved_at: approvedAt,
       rejection_reason: null,
     });
@@ -808,53 +882,42 @@ class PostService {
       before,
     );
     await this.publishArticle(post, approvedAt);
-    const notif = await Notification.findOne({
-      where: { article_uuid: post.uuid },
+    await this.upsertNotificationForArticle(post, {
+      user_name: user?.username || "Editor",
+      user_uuid: user?.uuid || null,
+      action: "edit",
+      target: post.title,
+      status: "approved",
+      description: `Artikel disetujui oleh ${user?.username || "Editor"}.`,
+      priority: "high",
+      category: "news",
+      post_id: post.id,
     });
-    if (notif) {
-      await notif.update({
-        user_name: user.username,
-        user_uuid: user.uuid,
-        action: "edit",
-        target: post.title,
-        status: "approved",
-        description: `Artikel disetujui oleh ${user.username}.`,
-        priority: "high",
-        category: "news",
-      });
-    } else {
-      await Notification.create({
-        user_name: user.username,
-        user_uuid: user.uuid,
-        action: "edit",
-        target: post.title,
-        status: "approved",
-        description: `Artikel disetujui oleh ${user.username}.`,
-        priority: "high",
-        category: "news",
-        post_id: post.id,
-        article_uuid: post.uuid,
-      });
-    }
     const author = await User.findByPk(post.author_id);
     const frontendUrl = process.env.FRONTEND_URL || "https://almuhtada.org";
 
-    await sendTelegramMessage({
+    // Send Telegram notification for approval (non-blocking)
+    sendTelegramMessage({
       topic: "APPROVAL",
       useHtml: true,
       text:
         `🎉 <b>ARTIKEL DISETUJUI & DIPUBLIKASIKAN</b>\n\n` +
-        `📌 <b>Judul:</b> ${post.title}\n` +
-        `✍️ <b>Penulis:</b> ${author?.username || "-"}\n` +
-        `👤 <b>Disetujui Oleh:</b> ${user.username}\n` +
+        `📌 <b>Judul:</b> ${escapeHtml(post.title)}\n` +
+        `✍️ <b>Penulis:</b> ${escapeHtml(author?.username || "-")}\n` +
+        `👤 <b>Disetujui Oleh:</b> ${escapeHtml(user?.username || "Editor")}\n` +
         `⏰ <b>Waktu:</b> ${approvedAt.toLocaleString("id-ID")}\n\n` +
         `🟢 <b>Status:</b> <i>Disetujui & Diterbitkan</i>\n` +
-        `🔗 <a href="${frontendUrl}/detail-news/${post.slug}"><b>Baca Artikel Sekarang</b></a>`,
+        `🔗 <a href="${frontendUrl}/detail-news/${encodeURIComponent(post.slug)}"><b>Baca Artikel Sekarang</b></a>`,
     }).catch((err) => {
-      console.error("Telegram approval notification failed:", err);
+      console.error(
+        "[Telegram] Approval notification failed:",
+        err.message || err,
+      );
       this.logSystemError("Telegram approval notification failed", err, {
         articleUuid: post.uuid,
-        userUuid: user.uuid,
+        postTitle: post.title,
+        editorUuid: user?.uuid,
+        type: "APPROVAL",
       });
     });
     return post;
@@ -893,6 +956,11 @@ class PostService {
     if (!post) {
       throw new NotFoundError("Post not found");
     }
+    await Notification.destroy({
+      where: {
+        [Op.or]: [{ article_uuid: post.uuid }, { post_id: post.id }],
+      },
+    });
     await post.destroy();
     return true;
   }
