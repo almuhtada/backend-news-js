@@ -35,6 +35,14 @@ exports.getAllNotifications = async (req, res) => {
       ];
     }
 
+    // Jika role user adalah author, tampilkan hanya notifikasi milik author tersebut
+    if (req.user?.role === "author") {
+      where[Op.or] = [
+        { user_uuid: req.user.uuid },
+        { "$post.author_id$": req.user.id },
+      ];
+    }
+
     const postInclude = {
       model: Post,
       as: "post",
@@ -268,7 +276,7 @@ exports.updateNotificationStatus = async (req, res) => {
     // No duplicate sending here to ensure data consistency
 
     // Fetch updated notification with post
-    const updatedNotification = await Notification.findByPk(id, {
+    const updatedNotification = await Notification.findByPk(notification.id, {
       include: [
         {
           model: Post,
@@ -290,11 +298,11 @@ exports.updateNotificationStatus = async (req, res) => {
       topic: "SYSTEM_ERROR",
       useHtml: true,
       text:
-        `<b>SYSTEM ERROR</b>\n\n` +
-        `<b>Operation:</b> Update notification status\n` +
-        `<b>Error:</b> ${error.message}\n` +
-        `<b>Notification UUID:</b> ${req.params.id}\n` +
-        `<b>Waktu:</b> ${new Date().toLocaleString("id-ID")}`,
+        `🚨 <b>ALERT SYSTEM ERROR</b>\n\n` +
+        `📌 <b>Operasi:</b> Update notification status\n` +
+        `⚠️ <b>Detail Error:</b> <code>${error.message}</code>\n` +
+        `🆔 <b>ID / UUID Notifikasi:</b> <code>${req.params.id}</code>\n` +
+        `⏰ <b>Waktu:</b> ${new Date().toLocaleString("id-ID")}`,
     }).catch(() => {});
     res.status(500).json({
       success: false,

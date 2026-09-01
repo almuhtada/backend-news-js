@@ -35,12 +35,13 @@ async function handleSubmit({ title, author }) {
 
   await sendTelegramMessage({
     topic: "PENULIS",
+    useHtml: true,
     text:
-      `📝 *Konten Baru Dikirim*\n\n` +
-      `📰 *Judul:* ${title}\n` +
-      `✍️ *Penulis:* ${author}\n` +
-      `⏰ *Waktu:* ${formatDateTime()}\n\n` +
-      `Status: Menunggu review editor`,
+      `📝 <b>Artikel Baru Dikirim</b>\n\n` +
+      `📌 <b>Judul:</b> ${title}\n` +
+      `✍️ <b>Penulis:</b> ${author}\n` +
+      `⏰ <b>Waktu:</b> ${formatDateTime()}\n\n` +
+      `🟡 <b>Status:</b> <i>Menunggu Review Editor</i>`,
   });
 }
 
@@ -51,13 +52,14 @@ async function handleEditor({ title, author, editor, link, action }) {
 
   await sendTelegramMessage({
     topic: "EDITOR",
+    useHtml: true,
     text:
-      `🛠️ *Konten ${action || "Direview"}*\n\n` +
-      `📰 *Judul:* ${title}\n` +
-      (author ? `✍️ *Penulis:* ${author}\n` : "") +
-      `👤 *Editor:* ${editor}\n` +
-      `⏰ *Waktu:* ${formatDateTime()}\n\n` +
-      `🔗 *Link:*\n${link}`,
+      `🛠️ <b>Artikel ${action || "Direview"}</b>\n\n` +
+      `📌 <b>Judul:</b> ${title}\n` +
+      (author ? `✍️ <b>Penulis:</b> ${author}\n` : "") +
+      `👤 <b>Editor:</b> ${editor}\n` +
+      `⏰ <b>Waktu:</b> ${formatDateTime()}\n\n` +
+      `🔍 <a href="${link}"><b>Buka Link Artikel</b></a>`,
   });
 }
 

@@ -392,19 +392,35 @@ class PostService {
       ],
     });
 
-    // Create notification
-    await Notification.create({
-      user_name: author ? author.username : "Unknown User",
-      action: "add",
-      target: title,
-      status: "pending",
-      description: summary || excerpt || `Berita baru ditambahkan: ${title}`,
-      priority: "medium",
-      category: "news",
-      post_id: post.id,
-      article_uuid: post.uuid,
-      user_uuid: author?.uuid,
+    // Update or Create Notification agar tidak duplikat untuk satu artikel
+    const existingNotification = await Notification.findOne({
+      where: { article_uuid: post.uuid },
     });
+    if (existingNotification) {
+      await existingNotification.update({
+        user_name: author ? author.username : "Unknown User",
+        action: "add",
+        target: title,
+        status: "pending",
+        description: summary || excerpt || `Berita baru ditambahkan: ${title}`,
+        priority: "medium",
+        category: "news",
+        user_uuid: author?.uuid,
+      });
+    } else {
+      await Notification.create({
+        user_name: author ? author.username : "Unknown User",
+        action: "add",
+        target: title,
+        status: "pending",
+        description: summary || excerpt || `Berita baru ditambahkan: ${title}`,
+        priority: "medium",
+        category: "news",
+        post_id: post.id,
+        article_uuid: post.uuid,
+        user_uuid: author?.uuid,
+      });
+    }
 
     // Send Telegram Notification (non-blocking)
     const frontendUrl = process.env.FRONTEND_URL || "https://almuhtada.org";
@@ -617,28 +633,46 @@ class PostService {
       null,
       before,
     );
-    await Notification.create({
-      user_name: user.username,
-      user_uuid: user.uuid,
-      action: "edit",
-      target: post.title,
-      status: "pending",
-      description:
-        "Author telah mengirim revisi dan artikel siap diperiksa kembali.",
-      priority: "medium",
-      category: "news",
-      post_id: post.id,
-      article_uuid: post.uuid,
+    const notif = await Notification.findOne({
+      where: { article_uuid: post.uuid },
     });
+    if (notif) {
+      await notif.update({
+        user_name: user.username,
+        user_uuid: user.uuid,
+        action: "edit",
+        target: post.title,
+        status: "pending",
+        description:
+          "Author telah mengirim revisi dan artikel siap diperiksa kembali.",
+        priority: "medium",
+        category: "news",
+      });
+    } else {
+      await Notification.create({
+        user_name: user.username,
+        user_uuid: user.uuid,
+        action: "edit",
+        target: post.title,
+        status: "pending",
+        description:
+          "Author telah mengirim revisi dan artikel siap diperiksa kembali.",
+        priority: "medium",
+        category: "news",
+        post_id: post.id,
+        article_uuid: post.uuid,
+      });
+    }
     await sendTelegramMessage({
       topic: "REVISI_ARTIKEL",
       useHtml: true,
       text:
-        `<b>REVISI ARTIKEL</b>\n\n` +
-        `<b>Author:</b> ${user.username}\n` +
-        `<b>Artikel:</b> ${post.title}\n` +
-        `<b>Status:</b> RESUBMITTED\n` +
-        `<b>Article UUID:</b> ${post.uuid}`,
+        `📥 <b>REVISI ARTIKEL DIKIRIM ULANG</b>\n\n` +
+        `📌 <b>Judul:</b> ${post.title}\n` +
+        `✍️ <b>Penulis:</b> ${user.username}\n` +
+        `⏰ <b>Waktu:</b> ${new Date().toLocaleString("id-ID")}\n\n` +
+        `🔄 <b>Status:</b> <i>Revisi Telah Terkirim (Menunggu Review Editor)</i>\n` +
+        `🔍 <a href="${process.env.FRONTEND_URL || "https://almuhtada.org"}/detail-news/${post.slug}"><b>Lihat Artikel</b></a>`,
     }).catch(() => {});
     return post;
   }
@@ -693,30 +727,51 @@ class PostService {
       comment,
       before,
     );
-    await Notification.create({
-      user_name: user.username,
-      user_uuid: user.uuid,
-      action: "edit",
-      target: post.title,
-      status: "rejected",
-      description: comment || "Artikel memerlukan revisi.",
-      priority: "high",
-      category: "news",
-      post_id: post.id,
-      article_uuid: post.uuid,
+    const notif = await Notification.findOne({
+      where: { article_uuid: post.uuid },
     });
+    if (notif) {
+      await notif.update({
+        user_name: user.username,
+        user_uuid: user.uuid,
+        action: "edit",
+        target: post.title,
+        status: "rejected",
+        description: comment || "Artikel memerlukan revisi.",
+        priority: "high",
+        category: "news",
+      });
+    } else {
+      await Notification.create({
+        user_name: user.username,
+        user_uuid: user.uuid,
+        action: "edit",
+        target: post.title,
+        status: "rejected",
+        description: comment || "Artikel memerlukan revisi.",
+        priority: "high",
+        category: "news",
+        post_id: post.id,
+        article_uuid: post.uuid,
+      });
+    }
     const author = await User.findByPk(post.author_id);
+    const revisionCatatan = comment || "Mohon lakukan revisi sesuai catatan editor.";
+    const frontendUrl = process.env.FRONTEND_URL || "https://almuhtada.org";
+
     await sendTelegramMessage({
       topic: "REVISI_ARTIKEL",
       useHtml: true,
       text:
-        `⚠️ <b>REVISI ARTIKEL</b>\n\n` +
+        `⚠️ <b>PERMINTAAN REVISI ARTIKEL</b>\n\n` +
         `📌 <b>Judul:</b> ${post.title}\n` +
         `✍️ <b>Penulis:</b> ${author ? author.username : "Unknown"}\n` +
         `👤 <b>Editor:</b> ${user.username}\n` +
-        `💬 <b>Catatan Revisi:</b> ${comment || "Mohon lakukan revisi sesuai catatan editor."}\n` +
         `⏰ <b>Waktu:</b> ${new Date().toLocaleString("id-ID")}\n\n` +
-        `🟠 <b>Status:</b> <i>REVISION REQUIRED (Kembali ke Draft)</i>`
+        `📝 <b>Alasan / Catatan Revisi:</b>\n` +
+        `<i>"${revisionCatatan}"</i>\n\n` +
+        `🔴 <b>Status:</b> <i>Dikembalikan ke Draft (Perlu Revisi)</i>\n` +
+        `🔍 <a href="${frontendUrl}/detail-news/${post.slug}"><b>Lihat Detail Artikel</b></a>`,
     }).catch((err) => {
       console.error("Telegram revision notification failed:", err);
     });
@@ -753,31 +808,48 @@ class PostService {
       before,
     );
     await this.publishArticle(post, approvedAt);
-    await Notification.create({
-      user_name: user.username,
-      user_uuid: user.uuid,
-      action: "edit",
-      target: post.title,
-      status: "approved",
-      description: `Artikel disetujui oleh ${user.username}.`,
-      priority: "high",
-      category: "news",
-      post_id: post.id,
-      article_uuid: post.uuid,
+    const notif = await Notification.findOne({
+      where: { article_uuid: post.uuid },
     });
+    if (notif) {
+      await notif.update({
+        user_name: user.username,
+        user_uuid: user.uuid,
+        action: "edit",
+        target: post.title,
+        status: "approved",
+        description: `Artikel disetujui oleh ${user.username}.`,
+        priority: "high",
+        category: "news",
+      });
+    } else {
+      await Notification.create({
+        user_name: user.username,
+        user_uuid: user.uuid,
+        action: "edit",
+        target: post.title,
+        status: "approved",
+        description: `Artikel disetujui oleh ${user.username}.`,
+        priority: "high",
+        category: "news",
+        post_id: post.id,
+        article_uuid: post.uuid,
+      });
+    }
     const author = await User.findByPk(post.author_id);
+    const frontendUrl = process.env.FRONTEND_URL || "https://almuhtada.org";
+
     await sendTelegramMessage({
       topic: "APPROVAL",
       useHtml: true,
       text:
-        `<b>ARTIKEL DISETUJUI</b>\n\n` +
-        `<b>Artikel:</b> ${post.title}\n` +
-        `<b>Author:</b> ${author?.username || "-"}\n` +
-        `<b>Approved by:</b> ${user.username}\n` +
-        `<b>Approved by UUID:</b> ${user.uuid}\n` +
-        `<b>Status:</b> APPROVED\n` +
-        `<b>Waktu:</b> ${approvedAt.toLocaleString("id-ID")}\n` +
-        `<b>Article UUID:</b> ${post.uuid}`,
+        `🎉 <b>ARTIKEL DISETUJUI & DIPUBLIKASIKAN</b>\n\n` +
+        `📌 <b>Judul:</b> ${post.title}\n` +
+        `✍️ <b>Penulis:</b> ${author?.username || "-"}\n` +
+        `👤 <b>Disetujui Oleh:</b> ${user.username}\n` +
+        `⏰ <b>Waktu:</b> ${approvedAt.toLocaleString("id-ID")}\n\n` +
+        `🟢 <b>Status:</b> <i>Disetujui & Diterbitkan</i>\n` +
+        `🔗 <a href="${frontendUrl}/detail-news/${post.slug}"><b>Baca Artikel Sekarang</b></a>`,
     }).catch((err) => {
       console.error("Telegram approval notification failed:", err);
       this.logSystemError("Telegram approval notification failed", err, {
@@ -982,15 +1054,19 @@ class PostService {
 
   logSystemError(message, error, context = {}) {
     const { sendTelegramMessage } = require("./telegram.service");
+    const contextStr = Object.keys(context).length
+      ? `\n\n🔍 <b>Context Detail:</b>\n<code>${JSON.stringify(context, null, 2).substring(0, 800)}</code>`
+      : "";
+
     sendTelegramMessage({
       topic: "SYSTEM_ERROR",
       useHtml: true,
       text:
-        `<b>SYSTEM ERROR</b>\n\n` +
-        `<b>Message:</b> ${message}\n` +
-        `<b>Error:</b> ${error?.message || String(error)}\n` +
-        `<b>Context:</b> ${JSON.stringify(context, null, 2).substring(0, 500)}\n` +
-        `<b>Waktu:</b> ${new Date().toLocaleString("id-ID")}`,
+        `🚨 <b>ALERT SYSTEM ERROR</b>\n\n` +
+        `📌 <b>Pesan:</b> ${message}\n` +
+        `⚠️ <b>Detail Error:</b> <code>${error?.message || String(error)}</code>\n` +
+        `⏰ <b>Waktu:</b> ${new Date().toLocaleString("id-ID")}` +
+        contextStr,
     }).catch(() => {});
     console.error("[SystemError]", message, error, context);
   }
