@@ -57,7 +57,7 @@ class HomeService {
   async getHome() {
     const publishedSince = new Date();
     publishedSince.setDate(publishedSince.getDate() - HOME_WINDOW_DAYS);
-    const candidates = await Post.findAll({
+    let candidates = await Post.findAll({
       where: {
         status: "publish",
         published_at: { [Op.gte]: publishedSince },
@@ -75,32 +75,55 @@ class HomeService {
       order: [["published_at", "DESC"]],
       limit: HOME_CANDIDATE_LIMIT,
     });
+
+    if (candidates.length < 15) {
+      candidates = await Post.findAll({
+        where: {
+          status: "publish",
+        },
+        attributes: [
+          ...postAttributes,
+          [
+            sequelize.literal(
+              "(Post.views * 1 + (SELECT COUNT(*) FROM post_likes WHERE post_likes.post_id = Post.id) * 5 + (SELECT COUNT(*) FROM comments WHERE comments.post_id = Post.id AND comments.status = 'approved') * 10)",
+            ),
+            "engagement_score",
+          ],
+        ],
+        include: postInclude,
+        order: [["published_at", "DESC"], ["createdAt", "DESC"]],
+        limit: HOME_CANDIDATE_LIMIT,
+      });
+    }
+
     const newest = [...candidates].sort(byNewest);
     const editorial = [...candidates].sort(byEditorial);
     const popular = [...candidates].sort(byPopularity);
     const heroCandidates = [...candidates].sort(byHeroScore);
     const viralCandidates = [...candidates].sort(byEngagement);
-    const usedArticleIds = new Set();
-    const hero = takeUniqueArticles(heroCandidates, usedArticleIds, 5);
-    const viral = takeUniqueArticles(viralCandidates, usedArticleIds, 4);
-    const latest = takeUniqueArticles(newest, usedArticleIds, 6);
-    const editorPicks = takeUniqueArticles(editorial, usedArticleIds, 4);
-    const mostRead = takeUniqueArticles(popular, usedArticleIds, 5);
-    if (mostRead.length < 3) {
-      mostRead.push(
-        ...popular
-          .filter((post) => !mostRead.some((item) => item.id === post.id))
-          .slice(0, 2),
-      );
-    }
-    const remaining = candidates.filter((post) => !usedArticleIds.has(post.id));
+
+    const heroIds = new Set();
+    const hero = takeUniqueArticles(heroCandidates, heroIds, 5);
+
+    const viralIds = new Set();
+    const viral = takeUniqueArticles(viralCandidates, viralIds, 7);
+
+    const latestIds = new Set();
+    const latest = takeUniqueArticles(newest, latestIds, 6);
+
+    const editorIds = new Set();
+    const editorPicks = takeUniqueArticles(editorial, editorIds, 6);
+
+    const mostReadIds = new Set();
+    const mostRead = takeUniqueArticles(popular, mostReadIds, 6);
+
     return {
       hero: { main: hero[0] || null, supporting: hero.slice(1) },
       latest,
       editorPicks,
       viral,
       mostRead,
-      remaining,
+      remaining: candidates,
     };
   }
 }
