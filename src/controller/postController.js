@@ -1,5 +1,15 @@
 const postService = require("../services/post.service");
+const aiDetectorService = require("../services/aiDetector.service");
 const { ok, created, paginated, asyncHandler } = require("../utils");
+
+/**
+ * Detect AI probability from text or article
+ */
+exports.detectAiContent = asyncHandler(async (req, res) => {
+  const { content } = req.body;
+  const result = await aiDetectorService.detectAiContent(content);
+  return ok(res, result, "AI detection completed successfully");
+});
 
 /**
  * Generate AI summary from text content

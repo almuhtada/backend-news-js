@@ -3,6 +3,78 @@ const { sendTelegramMessage } = require("../services/telegram.service");
 const postService = require("../services/post.service");
 const { Op } = require("sequelize");
 
+/**
+ * Resolve the article attached to a notification using its relational key.
+ *
+ * `post_id` is the key used to render the article in the dashboard, so it is
+ * the canonical reference for moderation actions. Older notifications can
+ * contain an `article_uuid` that no longer matches `post_id`; trusting that
+ * UUID could approve a different article from the one shown to an editor.
+ */
+async function resolveNotificationPost(notification) {
+  if (notification.post_id) {
+    const postById = await Post.findByPk(notification.post_id);
+    if (postById) {
+      if (notification.article_uuid !== postById.uuid) {
+        console.warn(
+          `[Notification ${notification.uuid}] Repairing mismatched article reference`,
+          {
+            postId: notification.post_id,
+            storedArticleUuid: notification.article_uuid,
+            resolvedArticleUuid: postById.uuid,
+          },
+        );
+        sendTelegramMessage({
+          topic: "SYSTEM_ERROR",
+          useHtml: true,
+          text:
+            `⚠️ <b>MISMATCH ARTICLE REFERENCE REPAIRED</b>\n\n` +
+            `📌 <b>Notifikasi UUID:</b> <code>${notification.uuid}</code>\n` +
+            `📝 <b>Post ID (Target):</b> <code>${notification.post_id}</code> ("${postById.title}")\n` +
+            `❌ <b>Article UUID Salah:</b> <code>${notification.article_uuid}</code>\n` +
+            `✅ <b>Article UUID Sinkron:</b> <code>${postById.uuid}</code>\n` +
+            `⏰ <b>Waktu:</b> ${new Date().toLocaleString("id-ID")}`,
+        }).catch(() => {});
+
+        await notification.update({ article_uuid: postById.uuid });
+      }
+      return postById;
+    }
+  }
+
+  if (notification.article_uuid) {
+    const postByUuid = await Post.findOne({
+      where: { uuid: notification.article_uuid },
+    });
+    if (postByUuid && notification.post_id !== postByUuid.id) {
+      console.warn(
+        `[Notification ${notification.uuid}] Repairing missing post relation`,
+        {
+          storedPostId: notification.post_id,
+          articleUuid: notification.article_uuid,
+          resolvedPostId: postByUuid.id,
+        },
+      );
+      sendTelegramMessage({
+        topic: "SYSTEM_ERROR",
+        useHtml: true,
+        text:
+          `⚠️ <b>MISSING POST RELATION REPAIRED</b>\n\n` +
+          `📌 <b>Notifikasi UUID:</b> <code>${notification.uuid}</code>\n` +
+          `📝 <b>Article UUID:</b> <code>${notification.article_uuid}</code> ("${postByUuid.title}")\n` +
+          `❌ <b>Post ID Lama:</b> <code>${notification.post_id}</code>\n` +
+          `✅ <b>Post ID Sinkron:</b> <code>${postByUuid.id}</code>\n` +
+          `⏰ <b>Waktu:</b> ${new Date().toLocaleString("id-ID")}`,
+      }).catch(() => {});
+
+      await notification.update({ post_id: postByUuid.id });
+    }
+    return postByUuid;
+  }
+
+  return null;
+}
+
 // Get all notifications with pagination
 exports.getAllNotifications = async (req, res) => {
   try {
@@ -214,14 +286,33 @@ exports.updateNotificationStatus = async (req, res) => {
       });
     }
 
-    let articleUuid = notification.article_uuid;
-    if (!articleUuid && notification.post_id) {
-      const p = await Post.findByPk(notification.post_id);
-      if (p) {
-        articleUuid = p.uuid;
-        await notification.update({ article_uuid: p.uuid });
-      }
+    const hasArticleReference = Boolean(
+      notification.post_id || notification.article_uuid,
+    );
+    const relatedPost = hasArticleReference
+      ? await resolveNotificationPost(notification)
+      : null;
+
+    if (hasArticleReference && !relatedPost) {
+      sendTelegramMessage({
+        topic: "SYSTEM_ERROR",
+        useHtml: true,
+        text:
+          `🚨 <b>ALERT ARTICLE APPROVAL BLOCKED</b>\n\n` +
+          `📌 <b>Notifikasi ID/UUID:</b> <code>${id}</code>\n` +
+          `👤 <b>Editor/User:</b> ${req.user?.username || req.user?.email || "Unknown"}\n` +
+          `⚠️ <b>Detail:</b> Artikel yang ditautkan ke notifikasi tidak ditemukan di database (post_id: ${notification.post_id}, article_uuid: ${notification.article_uuid}). Approval dibatalkan agar tidak memproses artikel lain.\n` +
+          `⏰ <b>Waktu:</b> ${new Date().toLocaleString("id-ID")}`,
+      }).catch(() => {});
+
+      return res.status(409).json({
+        success: false,
+        message:
+          "Artikel terkait notifikasi tidak ditemukan. Approval dibatalkan agar tidak memproses artikel lain.",
+      });
     }
+
+    const articleUuid = relatedPost?.uuid || null;
 
     if (articleUuid && status === "approved") {
       // postService.approveArticle already handles:

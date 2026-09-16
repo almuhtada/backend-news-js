@@ -21,16 +21,26 @@ exports.generateSummary = async (content) => {
     return fallbackSummarize(content);
   }
 
-  for (const [index, apiKey] of apiKeys.entries()) {
-    try {
-      const groq = getGroqClient(apiKey);
+  const candidateModels = [
+    "openai/gpt-oss-120b",
+    "llama-3.3-70b-versatile",
+    "llama-3.1-8b-instant",
+    "llama-3.2-3b-preview",
+    "deepseek-r1-distill-llama-70b",
+  ];
 
-      const response = await groq.chat.completions.create({
-        model: "llama-3.1-8b-instant",
-        messages: [
-          {
-            role: "user",
-            content: `Kamu adalah asisten yang ahli meringkas berita dalam Bahasa Indonesia.
+  for (const apiKey of apiKeys) {
+    const groq = getGroqClient(apiKey);
+    if (!groq) continue;
+
+    for (const model of candidateModels) {
+      try {
+        const response = await groq.chat.completions.create({
+          model,
+          messages: [
+            {
+              role: "user",
+              content: `Kamu adalah asisten yang ahli meringkas berita dalam Bahasa Indonesia.
 
 Tugas: Ringkas berita berikut menjadi 2-4 kalimat yang padat dan informatif.
 
@@ -45,18 +55,27 @@ Berita:
 ${content}
 
 Ringkasan:`,
-          },
-        ],
-        temperature: 0.3,
-        max_tokens: 300,
-      });
+            },
+          ],
+          temperature: 0.3,
+          max_tokens: 300,
+        });
 
-      return response.choices[0].message.content.trim();
-    } catch (error) {
-      console.error(
-        `Groq API error on ${index === 0 ? "primary" : "backup"} key:`,
-        error.message,
-      );
+        return response.choices[0].message.content.trim();
+      } catch (error) {
+        if (
+          error.status === 404 ||
+          error.status === 400 ||
+          error.message?.includes("model_not_found") ||
+          error.message?.includes("decommissioned")
+        ) {
+          continue;
+        }
+        console.error(
+          `Groq API error on model ${model}:`,
+          error.message,
+        );
+      }
     }
   }
 

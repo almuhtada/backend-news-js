@@ -10,6 +10,7 @@ const {
   getRecentPosts,
   getTrendingPosts,
   summarizeText,
+  detectAiContent,
   submitRevision,
   startReview,
   requestRevision,
@@ -184,6 +185,7 @@ router.get("/trending", getTrendingPosts);
  *         description: Server error
  */
 router.post("/summarize", summarizeText);
+router.post("/detect-ai", detectAiContent);
 
 /**
  * @swagger
