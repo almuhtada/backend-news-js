@@ -796,27 +796,34 @@ class PostService {
 
   async requestRevision(articleUuid, user, comment) {
     if (!["administrator", "editor"].includes(user?.role)) {
-      throw new ForbiddenError("Only an editor can request revision");
+      throw new ForbiddenError("Only an editor can request revisions");
     }
     const post = await this.getWorkflowPost(articleUuid);
     const before = post.workflow_status;
+
+    const reviewer = user?.id ? await User.findByPk(user.id) : null;
+    const reviewerUuid = reviewer?.uuid || user?.uuid || null;
+    const reviewerName = reviewer?.display_name || reviewer?.username || user?.display_name || user?.username || "Editor";
+    const reviewerId = reviewer?.id || user?.id || null;
+
     await post.update({
       workflow_status: WORKFLOW.REVISION_REQUIRED,
       rejection_reason:
         comment || "Mohon lakukan revisi sesuai catatan editor.",
       status: "draft",
+      editor_id: reviewerId || post.editor_id,
     });
     await this.addActivity(
       post,
-      user,
+      reviewer || user,
       "REVISION_REQUIRED",
       WORKFLOW.REVISION_REQUIRED,
       comment,
       before,
     );
     await this.upsertNotificationForArticle(post, {
-      user_name: user?.username || "Editor",
-      user_uuid: user?.uuid || null,
+      user_name: reviewerName,
+      user_uuid: reviewerUuid,
       action: "edit",
       target: post.title,
       status: "rejected",
@@ -826,6 +833,7 @@ class PostService {
       post_id: post.id,
     });
     const author = await User.findByPk(post.author_id);
+    const authorName = author?.display_name || author?.username || "Unknown";
     const revisionCatatan =
       comment || "Mohon lakukan revisi sesuai catatan editor.";
     const frontendUrl = process.env.FRONTEND_URL || "https://almuhtada.org";
@@ -837,8 +845,8 @@ class PostService {
       text:
         `⚠️ <b>PERMINTAAN REVISI ARTIKEL</b>\n\n` +
         `📌 <b>Judul:</b> ${escapeHtml(post.title)}\n` +
-        `✍️ <b>Penulis:</b> ${escapeHtml(author ? author.username : "Unknown")}\n` +
-        `👤 <b>Editor:</b> ${escapeHtml(user?.username || "Editor")}\n` +
+        `✍️ <b>Penulis:</b> ${escapeHtml(authorName)}\n` +
+        `👤 <b>Editor:</b> ${escapeHtml(reviewerName)}\n` +
         `⏰ <b>Waktu:</b> ${new Date().toLocaleString("id-ID")}\n\n` +
         `📝 <b>Alasan / Catatan Revisi:</b>\n` +
         `<i>"${escapeHtml(revisionCatatan)}"</i>\n\n` +
@@ -852,7 +860,7 @@ class PostService {
       this.logSystemError("Telegram revision notification failed", err, {
         articleUuid: post.uuid,
         postTitle: post.title,
-        editorUuid: user?.uuid,
+        editorUuid: reviewerUuid,
         type: "REVISI_ARTIKEL",
       });
     });
@@ -866,16 +874,23 @@ class PostService {
     const post = await this.getWorkflowPost(articleUuid);
     const before = post.workflow_status;
     const approvedAt = new Date();
+
+    const approver = user?.id ? await User.findByPk(user.id) : null;
+    const approverUuid = approver?.uuid || user?.uuid || null;
+    const approverName = approver?.display_name || approver?.username || user?.display_name || user?.username || "Editor";
+    const approverId = approver?.id || user?.id || null;
+
     await post.update({
       workflow_status: WORKFLOW.APPROVED,
       status: "publish",
-      approved_by_user_uuid: user?.uuid || null,
+      approved_by_user_uuid: approverUuid,
       approved_at: approvedAt,
+      editor_id: approverId || post.editor_id,
       rejection_reason: null,
     });
     await this.addActivity(
       post,
-      user,
+      approver || user,
       "APPROVED",
       WORKFLOW.APPROVED,
       null,
@@ -883,17 +898,18 @@ class PostService {
     );
     await this.publishArticle(post, approvedAt);
     await this.upsertNotificationForArticle(post, {
-      user_name: user?.username || "Editor",
-      user_uuid: user?.uuid || null,
+      user_name: approverName,
+      user_uuid: approverUuid,
       action: "edit",
       target: post.title,
       status: "approved",
-      description: `Artikel disetujui oleh ${user?.username || "Editor"}.`,
+      description: `Artikel disetujui oleh ${approverName}.`,
       priority: "high",
       category: "news",
       post_id: post.id,
     });
     const author = await User.findByPk(post.author_id);
+    const authorName = author?.display_name || author?.username || "-";
     const frontendUrl = process.env.FRONTEND_URL || "https://almuhtada.org";
 
     // Send Telegram notification for approval (non-blocking)
@@ -903,8 +919,8 @@ class PostService {
       text:
         `🎉 <b>ARTIKEL DISETUJUI & DIPUBLIKASIKAN</b>\n\n` +
         `📌 <b>Judul:</b> ${escapeHtml(post.title)}\n` +
-        `✍️ <b>Penulis:</b> ${escapeHtml(author?.username || "-")}\n` +
-        `👤 <b>Disetujui Oleh:</b> ${escapeHtml(user?.username || "Editor")}\n` +
+        `✍️ <b>Penulis:</b> ${escapeHtml(authorName)}\n` +
+        `👤 <b>Disetujui Oleh:</b> ${escapeHtml(approverName)}\n` +
         `⏰ <b>Waktu:</b> ${approvedAt.toLocaleString("id-ID")}\n\n` +
         `🟢 <b>Status:</b> <i>Disetujui & Diterbitkan</i>\n` +
         `🔗 <a href="${frontendUrl}/detail-news/${encodeURIComponent(post.slug)}"><b>Baca Artikel Sekarang</b></a>`,
@@ -916,7 +932,7 @@ class PostService {
       this.logSystemError("Telegram approval notification failed", err, {
         articleUuid: post.uuid,
         postTitle: post.title,
-        editorUuid: user?.uuid,
+        editorUuid: approverUuid,
         type: "APPROVAL",
       });
     });

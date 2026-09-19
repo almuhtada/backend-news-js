@@ -84,8 +84,10 @@ class AuthService {
     const token = jwt.sign(
       {
         id: user.id,
+        uuid: user.uuid,
         email: user.email,
         username: user.username,
+        display_name: user.display_name || user.username,
         role: user.role,
       },
       process.env.JWT_SECRET,
@@ -156,8 +158,10 @@ class AuthService {
     const newAccessToken = jwt.sign(
       {
         id: user.id,
+        uuid: user.uuid,
         email: user.email,
         username: user.username,
+        display_name: user.display_name || user.username,
         role: user.role,
       },
       process.env.JWT_SECRET,
