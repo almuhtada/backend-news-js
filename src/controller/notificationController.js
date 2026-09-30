@@ -12,64 +12,64 @@ const { Op } = require("sequelize");
  * UUID could approve a different article from the one shown to an editor.
  */
 async function resolveNotificationPost(notification) {
-  if (notification.post_id) {
-    const postById = await Post.findByPk(notification.post_id);
-    if (postById) {
-      if (notification.article_uuid !== postById.uuid) {
-        console.warn(
-          `[Notification ${notification.uuid}] Repairing mismatched article reference`,
-          {
-            postId: notification.post_id,
-            storedArticleUuid: notification.article_uuid,
-            resolvedArticleUuid: postById.uuid,
-          },
-        );
-        sendTelegramMessage({
-          topic: "SYSTEM_ERROR",
-          useHtml: true,
-          text:
-            `⚠️ <b>MISMATCH ARTICLE REFERENCE REPAIRED</b>\n\n` +
-            `📌 <b>Notifikasi UUID:</b> <code>${notification.uuid}</code>\n` +
-            `📝 <b>Post ID (Target):</b> <code>${notification.post_id}</code> ("${postById.title}")\n` +
-            `❌ <b>Article UUID Salah:</b> <code>${notification.article_uuid}</code>\n` +
-            `✅ <b>Article UUID Sinkron:</b> <code>${postById.uuid}</code>\n` +
-            `⏰ <b>Waktu:</b> ${new Date().toLocaleString("id-ID")}`,
-        }).catch(() => {});
-
-        await notification.update({ article_uuid: postById.uuid });
-      }
-      return postById;
-    }
-  }
-
+  // 1. Try matching by article_uuid first (UUID is primary unique post identifier)
   if (notification.article_uuid) {
     const postByUuid = await Post.findOne({
       where: { uuid: notification.article_uuid },
     });
-    if (postByUuid && notification.post_id !== postByUuid.id) {
-      console.warn(
-        `[Notification ${notification.uuid}] Repairing missing post relation`,
-        {
-          storedPostId: notification.post_id,
-          articleUuid: notification.article_uuid,
-          resolvedPostId: postByUuid.id,
-        },
-      );
-      sendTelegramMessage({
-        topic: "SYSTEM_ERROR",
-        useHtml: true,
-        text:
-          `⚠️ <b>MISSING POST RELATION REPAIRED</b>\n\n` +
-          `📌 <b>Notifikasi UUID:</b> <code>${notification.uuid}</code>\n` +
-          `📝 <b>Article UUID:</b> <code>${notification.article_uuid}</code> ("${postByUuid.title}")\n` +
-          `❌ <b>Post ID Lama:</b> <code>${notification.post_id}</code>\n` +
-          `✅ <b>Post ID Sinkron:</b> <code>${postByUuid.id}</code>\n` +
-          `⏰ <b>Waktu:</b> ${new Date().toLocaleString("id-ID")}`,
-      }).catch(() => {});
-
-      await notification.update({ post_id: postByUuid.id });
+    if (postByUuid) {
+      if (notification.post_id !== postByUuid.id) {
+        console.warn(
+          `[Notification ${notification.uuid}] Repairing mismatched post_id reference`,
+          {
+            storedPostId: notification.post_id,
+            articleUuid: notification.article_uuid,
+            resolvedPostId: postByUuid.id,
+          },
+        );
+        await notification.update({ post_id: postByUuid.id });
+      }
+      return postByUuid;
     }
-    return postByUuid;
+  }
+
+  // 2. Try matching by target title (in case target holds the actual article title)
+  if (notification.target) {
+    const postByTitle = await Post.findOne({
+      where: { title: notification.target },
+    });
+    if (postByTitle) {
+      if (
+        notification.post_id !== postByTitle.id ||
+        notification.article_uuid !== postByTitle.uuid
+      ) {
+        console.warn(
+          `[Notification ${notification.uuid}] Repairing mismatched notification target reference`,
+          {
+            storedPostId: notification.post_id,
+            storedArticleUuid: notification.article_uuid,
+            resolvedPostId: postByTitle.id,
+            resolvedArticleUuid: postByTitle.uuid,
+          },
+        );
+        await notification.update({
+          post_id: postByTitle.id,
+          article_uuid: postByTitle.uuid,
+        });
+      }
+      return postByTitle;
+    }
+  }
+
+  // 3. Fallback to post_id if article_uuid and title didn't match
+  if (notification.post_id) {
+    const postById = await Post.findByPk(notification.post_id);
+    if (postById) {
+      if (!notification.article_uuid || notification.article_uuid !== postById.uuid) {
+        await notification.update({ article_uuid: postById.uuid });
+      }
+      return postById;
+    }
   }
 
   return null;
@@ -158,13 +158,50 @@ exports.getAllNotifications = async (req, res) => {
     const { count, rows: notifications } = await Notification.findAndCountAll({
       where,
       attributes: {
-        exclude: ["id", "post_id"],
+        exclude: ["id"],
       },
       include: [postInclude],
       limit: parseInt(limit),
       offset: parseInt(offset),
       order: [[sort, order]],
     });
+
+    // Auto-repair post references if notification.post is mismatched with article_uuid or target
+    for (const notif of notifications) {
+      if (notif.category === "news") {
+        const correctPost = await resolveNotificationPost(notif);
+        if (correctPost && (!notif.post || notif.post.id !== correctPost.id)) {
+          const fullPost = await Post.findByPk(correctPost.id, {
+            attributes: [
+              "id",
+              "uuid",
+              "title",
+              "slug",
+              "featured_image",
+              "status",
+              "workflow_status",
+              "rejection_reason",
+              "author_id",
+              "image_caption",
+              "approved_by_user_uuid",
+              "approved_at",
+              "published_at",
+            ],
+            include: [
+              {
+                model: User,
+                as: "author",
+                attributes: ["id", "uuid", "username", "email", "display_name"],
+                required: false,
+              },
+            ],
+          });
+          if (fullPost) {
+            notif.setDataValue("post", fullPost);
+          }
+        }
+      }
+    }
 
     res.json({
       success: true,

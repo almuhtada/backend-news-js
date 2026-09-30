@@ -302,22 +302,30 @@ class PostService {
       }
     }
 
-    // 🔴 DUPLICATE CHECK: Jika penulis punya post dengan title sama dalam REVISION_REQUIRED,
-    // UPDATE yang lama daripada bikin baru (prevent duplicate saat resubmit after rejection)
-    const existingRevisionPost = await Post.findOne({
-      where: {
-        title,
-        author_id: postAuthorId,
-        workflow_status: WORKFLOW.REVISION_REQUIRED,
-      },
-    });
+    // 🔴 DUPLICATE TITLE CHECK: Jika judul yang sama sudah ada di database, cegah pembuatan postingan baru
+    if (title) {
+      const cleanTitle = title.trim();
+      const existingTitlePost = await Post.findOne({
+        where: {
+          title: { [Op.like]: cleanTitle },
+        },
+      });
 
-    if (existingRevisionPost) {
-      console.log(
-        `[CREATE_POST] Found existing REVISION_REQUIRED post, updating instead of creating new: ${existingRevisionPost.uuid}`,
-      );
-      // Update existing post instead of creating new
-      return this.updatePost(existingRevisionPost.uuid, data, user);
+      if (existingTitlePost) {
+        if (
+          existingTitlePost.author_id === postAuthorId &&
+          existingTitlePost.workflow_status === WORKFLOW.REVISION_REQUIRED
+        ) {
+          console.log(
+            `[CREATE_POST] Found existing REVISION_REQUIRED post, updating instead of creating new: ${existingTitlePost.uuid}`,
+          );
+          return this.updatePost(existingTitlePost.uuid, data, user);
+        }
+
+        throw new BadRequestError(
+          "Judul artikel sudah digunakan. Silakan gunakan judul yang berbeda.",
+        );
+      }
     }
 
     // Editor (opsional): resolve dari uuid
@@ -472,6 +480,22 @@ class PostService {
     const post = await Post.findOne({ where: { uuid: id } });
     if (!post) {
       throw new NotFoundError("Post not found");
+    }
+
+    if (title && title.trim().toLowerCase() !== post.title.trim().toLowerCase()) {
+      const cleanTitle = title.trim();
+      const existingTitlePost = await Post.findOne({
+        where: {
+          title: { [Op.like]: cleanTitle },
+          id: { [Op.ne]: post.id },
+        },
+      });
+
+      if (existingTitlePost) {
+        throw new BadRequestError(
+          "Judul artikel sudah digunakan. Silakan gunakan judul yang berbeda.",
+        );
+      }
     }
 
     const canEditAnyPost = ["administrator", "editor"].includes(user?.role);
@@ -642,8 +666,13 @@ class PostService {
   }
 
   async upsertNotificationForArticle(post, payload) {
+    const whereConditions = [];
+    if (post.uuid) whereConditions.push({ article_uuid: post.uuid });
+    if (post.id) whereConditions.push({ post_id: post.id });
+    if (post.title) whereConditions.push({ target: post.title });
+
     const notifications = await Notification.findAll({
-      where: { article_uuid: post.uuid },
+      where: { [Op.or]: whereConditions },
       order: [["created_at", "ASC"]],
     });
 
