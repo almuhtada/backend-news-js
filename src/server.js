@@ -290,7 +290,7 @@ async function startServer() {
     // Model sync
     process.stdout.write("  \x1b[90m●\x1b[0m Syncing database models... ");
     require("./schema");
-    await sequelize.sync({ alter: false });
+    await sequelize.sync({ alter: true });
     console.log("\x1b[32m✓\x1b[0m");
 
     // Start server

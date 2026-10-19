@@ -78,6 +78,18 @@ const Post = sequelize.define(
       type: DataTypes.DATE,
       allowNull: true,
     },
+    locked_by: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    locked_name: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+    locked_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
     published_at: {
       type: DataTypes.DATE,
       allowNull: true,
