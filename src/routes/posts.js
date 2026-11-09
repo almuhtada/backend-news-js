@@ -16,6 +16,7 @@ const {
   requestRevision,
   approveArticle,
   getArticleActivity,
+  checkTitle,
 } = require("../controller/postController");
 const { authenticate, authorize } = require("../middleware/auth");
 
@@ -210,6 +211,9 @@ router.post("/detect-ai", detectAiContent);
  */
 router.get("/recent", getRecentPosts);
 
+// Check if a title already exists (for real-time validation)
+router.get("/check-title", authenticate, checkTitle);
+
 /**
  * @swagger
  * /api/posts/uuid/{uuid}:
@@ -237,7 +241,7 @@ router.get("/uuid/:uuid", getPostByUuid);
 router.post("/:uuid/submit-revision", authenticate, submitRevision);
 router.post("/:uuid/start-review", authenticate, startReview);
 router.post("/:uuid/request-revision", authenticate, requestRevision);
-router.post("/:uuid/approve", authenticate, approveArticle);
+router.post("/:uuid/approve", authenticate, authorize("administrator", "editor"), approveArticle);
 router.get("/:uuid/activity", authenticate, getArticleActivity);
 
 /**

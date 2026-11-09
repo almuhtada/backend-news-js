@@ -106,6 +106,18 @@ exports.getArticleActivity = asyncHandler(async (req, res) => {
 });
 
 /**
+ * Check if a post title already exists
+ */
+exports.checkTitle = asyncHandler(async (req, res) => {
+  const { title, exclude_uuid } = req.query;
+  if (!title || !title.trim()) {
+    return ok(res, { exists: false }, "Title check completed");
+  }
+  const exists = await postService.checkTitleExists(title.trim(), exclude_uuid);
+  return ok(res, { exists }, "Title check completed");
+});
+
+/**
  * Delete post
  */
 exports.deletePost = asyncHandler(async (req, res) => {

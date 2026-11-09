@@ -732,6 +732,21 @@ class PostService {
     return post;
   }
 
+  /**
+   * Check if a post title already exists in the database.
+   * @param {string} title - The title to check
+   * @param {string} [excludeUuid] - UUID of a post to exclude (for edit mode)
+   * @returns {Promise<boolean>}
+   */
+  async checkTitleExists(title, excludeUuid) {
+    const where = { title: { [Op.like]: title } };
+    if (excludeUuid) {
+      where.uuid = { [Op.ne]: excludeUuid };
+    }
+    const existing = await Post.findOne({ where, attributes: ["id"] });
+    return !!existing;
+  }
+
   async submitRevision(articleUuid, user) {
     const post = await this.getWorkflowPost(articleUuid);
     const isAuthor = user?.role === "author" && post.author_id === user.id;
@@ -900,72 +915,127 @@ class PostService {
     if (!["administrator", "editor"].includes(user?.role)) {
       throw new ForbiddenError("Only an editor can approve an article");
     }
-    const post = await this.getWorkflowPost(articleUuid);
-    const before = post.workflow_status;
-    const approvedAt = new Date();
 
-    const approver = user?.id ? await User.findByPk(user.id) : null;
-    const approverUuid = approver?.uuid || user?.uuid || null;
-    const approverName = approver?.display_name || approver?.username || user?.display_name || user?.username || "Editor";
-    const approverId = approver?.id || user?.id || null;
+    const sequelize = require("../config/database");
+    const transaction = await sequelize.transaction();
 
-    await post.update({
-      workflow_status: WORKFLOW.APPROVED,
-      status: "publish",
-      approved_by_user_uuid: approverUuid,
-      approved_at: approvedAt,
-      editor_id: approverId || post.editor_id,
-      rejection_reason: null,
-    });
-    await this.addActivity(
-      post,
-      approver || user,
-      "APPROVED",
-      WORKFLOW.APPROVED,
-      null,
-      before,
-    );
-    await this.publishArticle(post, approvedAt);
-    await this.upsertNotificationForArticle(post, {
-      user_name: approverName,
-      user_uuid: approverUuid,
-      action: "edit",
-      target: post.title,
-      status: "approved",
-      description: `Artikel disetujui oleh ${approverName}.`,
-      priority: "high",
-      category: "news",
-      post_id: post.id,
-    });
-    const author = await User.findByPk(post.author_id);
-    const authorName = author?.display_name || author?.username || "-";
-    const frontendUrl = process.env.FRONTEND_URL || "https://almuhtada.org";
-
-    // Send Telegram notification for approval (non-blocking)
-    sendTelegramMessage({
-      topic: "APPROVAL",
-      useHtml: true,
-      text:
-        `🎉 <b>ARTIKEL DISETUJUI & DIPUBLIKASIKAN</b>\n\n` +
-        `📌 <b>Judul:</b> ${escapeHtml(post.title)}\n` +
-        `✍️ <b>Penulis:</b> ${escapeHtml(authorName)}\n` +
-        `👤 <b>Disetujui Oleh:</b> ${escapeHtml(approverName)}\n` +
-        `⏰ <b>Waktu:</b> ${approvedAt.toLocaleString("id-ID")}\n\n` +
-        `🟢 <b>Status:</b> <i>Disetujui & Diterbitkan</i>\n` +
-        `🔗 <a href="${frontendUrl}/detail-news/${encodeURIComponent(post.slug)}"><b>Baca Artikel Sekarang</b></a>`,
-    }).catch((err) => {
-      console.error(
-        "[Telegram] Approval notification failed:",
-        err.message || err,
-      );
-      this.logSystemError("Telegram approval notification failed", err, {
-        articleUuid: post.uuid,
-        postTitle: post.title,
-        editorUuid: approverUuid,
-        type: "APPROVAL",
+    try {
+      // Find post without exclusive lock to prevent ER_LOCK_WAIT_TIMEOUT
+      const post = await Post.findOne({
+        where: { uuid: articleUuid },
+        transaction,
       });
-    });
-    return post;
+      if (!post) throw new NotFoundError("Post not found");
+
+      // Guard: only allow approval from valid workflow states
+      const APPROVABLE_STATES = [
+        WORKFLOW.SUBMITTED,
+        WORKFLOW.IN_REVIEW,
+        WORKFLOW.RESUBMITTED,
+      ];
+      if (
+        post.workflow_status &&
+        !APPROVABLE_STATES.includes(post.workflow_status)
+      ) {
+        throw new BadRequestError(
+          `Artikel tidak bisa di-approve dari status "${post.workflow_status}". ` +
+            `Status yang valid: ${APPROVABLE_STATES.join(", ")}`,
+        );
+      }
+
+      const before = post.workflow_status;
+      const approvedAt = new Date();
+
+      const approver = user?.id ? await User.findByPk(user.id, { transaction }) : null;
+      const approverUuid = approver?.uuid || user?.uuid || null;
+      const approverName = approver?.display_name || approver?.username || user?.display_name || user?.username || "Editor";
+      const approverId = approver?.id || user?.id || null;
+
+      await post.update(
+        {
+          workflow_status: WORKFLOW.APPROVED,
+          status: "publish",
+          approved_by_user_uuid: approverUuid,
+          approved_at: approvedAt,
+          editor_id: approverId || post.editor_id,
+          rejection_reason: null,
+          locked_by: null,
+          locked_name: null,
+          locked_at: null,
+        },
+        { transaction },
+      );
+      await this.addActivity(
+        post,
+        approver || user,
+        "APPROVED",
+        WORKFLOW.APPROVED,
+        null,
+        before,
+      );
+      await post.update(
+        {
+          workflow_status: WORKFLOW.PUBLISHED,
+          published_at: approvedAt,
+        },
+        { transaction },
+      );
+      await this.addActivity(
+        post,
+        null,
+        "PUBLISHED",
+        WORKFLOW.PUBLISHED,
+        null,
+        WORKFLOW.APPROVED,
+      );
+
+      await transaction.commit();
+
+      // Non-transactional side effects (notifications, telegram)
+      await this.upsertNotificationForArticle(post, {
+        user_name: approverName,
+        user_uuid: approverUuid,
+        action: "edit",
+        target: post.title,
+        status: "approved",
+        description: `Artikel disetujui oleh ${approverName}.`,
+        priority: "high",
+        category: "news",
+        post_id: post.id,
+      });
+      const author = await User.findByPk(post.author_id);
+      const authorName = author?.display_name || author?.username || "-";
+      const frontendUrl = process.env.FRONTEND_URL || "https://almuhtada.org";
+
+      // Send Telegram notification for approval (non-blocking)
+      sendTelegramMessage({
+        topic: "APPROVAL",
+        useHtml: true,
+        text:
+          `🎉 <b>ARTIKEL DISETUJUI & DIPUBLIKASIKAN</b>\n\n` +
+          `📌 <b>Judul:</b> ${escapeHtml(post.title)}\n` +
+          `✍️ <b>Penulis:</b> ${escapeHtml(authorName)}\n` +
+          `👤 <b>Disetujui Oleh:</b> ${escapeHtml(approverName)}\n` +
+          `⏰ <b>Waktu:</b> ${approvedAt.toLocaleString("id-ID")}\n\n` +
+          `🟢 <b>Status:</b> <i>Disetujui & Diterbitkan</i>\n` +
+          `🔗 <a href="${frontendUrl}/detail-news/${encodeURIComponent(post.slug)}"><b>Baca Artikel Sekarang</b></a>`,
+      }).catch((err) => {
+        console.error(
+          "[Telegram] Approval notification failed:",
+          err.message || err,
+        );
+        this.logSystemError("Telegram approval notification failed", err, {
+          articleUuid: post.uuid,
+          postTitle: post.title,
+          editorUuid: approverUuid,
+          type: "APPROVAL",
+        });
+      });
+      return post;
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
+    }
   }
 
   async publishArticle(post, approvedAt = new Date()) {

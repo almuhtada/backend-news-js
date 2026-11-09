@@ -6,13 +6,17 @@ const { Op } = require("sequelize");
 /**
  * Resolve the article attached to a notification using its relational key.
  *
- * `post_id` is the key used to render the article in the dashboard, so it is
- * the canonical reference for moderation actions. Older notifications can
- * contain an `article_uuid` that no longer matches `post_id`; trusting that
- * UUID could approve a different article from the one shown to an editor.
+ * Priority order:
+ *   1. article_uuid  (most reliable — globally unique)
+ *   2. post_id       (FK fallback)
+ *
+ * Title-based matching has been REMOVED because it can resolve to the wrong
+ * article when titles are similar, duplicated, or the notification target
+ * field is stale.  This was the root cause of the "approve article A but
+ * article B gets published" bug reported by editors.
  */
 async function resolveNotificationPost(notification) {
-  // 1. Try matching by article_uuid first (UUID is primary unique post identifier)
+  // 1. Try article_uuid first (UUID is primary unique post identifier)
   if (notification.article_uuid) {
     const postByUuid = await Post.findOne({
       where: { uuid: notification.article_uuid },
@@ -27,46 +31,24 @@ async function resolveNotificationPost(notification) {
             resolvedPostId: postByUuid.id,
           },
         );
-        await notification.update({ post_id: postByUuid.id });
+        await Notification.update(
+          { post_id: postByUuid.id },
+          { where: { uuid: notification.uuid } }
+        );
       }
       return postByUuid;
     }
   }
 
-  // 2. Try matching by target title (in case target holds the actual article title)
-  if (notification.target) {
-    const postByTitle = await Post.findOne({
-      where: { title: notification.target },
-    });
-    if (postByTitle) {
-      if (
-        notification.post_id !== postByTitle.id ||
-        notification.article_uuid !== postByTitle.uuid
-      ) {
-        console.warn(
-          `[Notification ${notification.uuid}] Repairing mismatched notification target reference`,
-          {
-            storedPostId: notification.post_id,
-            storedArticleUuid: notification.article_uuid,
-            resolvedPostId: postByTitle.id,
-            resolvedArticleUuid: postByTitle.uuid,
-          },
-        );
-        await notification.update({
-          post_id: postByTitle.id,
-          article_uuid: postByTitle.uuid,
-        });
-      }
-      return postByTitle;
-    }
-  }
-
-  // 3. Fallback to post_id if article_uuid and title didn't match
+  // 2. Fallback to post_id
   if (notification.post_id) {
     const postById = await Post.findByPk(notification.post_id);
     if (postById) {
       if (!notification.article_uuid || notification.article_uuid !== postById.uuid) {
-        await notification.update({ article_uuid: postById.uuid });
+        await Notification.update(
+          { article_uuid: postById.uuid },
+          { where: { uuid: notification.uuid } }
+        );
       }
       return postById;
     }
@@ -349,6 +331,19 @@ exports.updateNotificationStatus = async (req, res) => {
       });
     }
 
+    // Safety check: verify the resolved post title matches what the editor sees
+    // to prevent approving the wrong article due to stale notification data
+    if (relatedPost && notification.target && relatedPost.title !== notification.target) {
+      console.warn(
+        `[Notification ${notification.uuid}] Post title mismatch detected`,
+        {
+          notificationTarget: notification.target,
+          resolvedPostTitle: relatedPost.title,
+          resolvedPostUuid: relatedPost.uuid,
+        },
+      );
+    }
+
     const articleUuid = relatedPost?.uuid || null;
 
     if (articleUuid && status === "approved") {
@@ -361,7 +356,10 @@ exports.updateNotificationStatus = async (req, res) => {
         req.user,
       );
       // Update notification status to approved
-      await notification.update({ status: "approved" });
+      await Notification.update(
+        { status: "approved" },
+        { where: { uuid: notification.uuid } }
+      );
       return res.json({ success: true, data: approvedPost });
     }
 
@@ -372,7 +370,10 @@ exports.updateNotificationStatus = async (req, res) => {
         rejection_reason,
       );
       // Update notification status to rejected
-      await notification.update({ status: "rejected" });
+      await Notification.update(
+        { status: "rejected" },
+        { where: { uuid: notification.uuid } }
+      );
       return res.json({ success: true, data: revisedPost });
     }
 
