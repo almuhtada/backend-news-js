@@ -932,6 +932,8 @@ class PostService {
         WORKFLOW.SUBMITTED,
         WORKFLOW.IN_REVIEW,
         WORKFLOW.RESUBMITTED,
+        WORKFLOW.PUBLISHED,
+        WORKFLOW.APPROVED,
       ];
       if (
         post.workflow_status &&
@@ -951,43 +953,45 @@ class PostService {
       const approverName = approver?.display_name || approver?.username || user?.display_name || user?.username || "Editor";
       const approverId = approver?.id || user?.id || null;
 
-      await post.update(
-        {
-          workflow_status: WORKFLOW.APPROVED,
-          status: "publish",
-          approved_by_user_uuid: approverUuid,
-          approved_at: approvedAt,
-          editor_id: approverId || post.editor_id,
-          rejection_reason: null,
-          locked_by: null,
-          locked_name: null,
-          locked_at: null,
-        },
-        { transaction },
-      );
-      await this.addActivity(
-        post,
-        approver || user,
-        "APPROVED",
-        WORKFLOW.APPROVED,
-        null,
-        before,
-      );
-      await post.update(
-        {
-          workflow_status: WORKFLOW.PUBLISHED,
-          published_at: approvedAt,
-        },
-        { transaction },
-      );
-      await this.addActivity(
-        post,
-        null,
-        "PUBLISHED",
-        WORKFLOW.PUBLISHED,
-        null,
-        WORKFLOW.APPROVED,
-      );
+      if (post.workflow_status !== WORKFLOW.PUBLISHED) {
+        await post.update(
+          {
+            workflow_status: WORKFLOW.APPROVED,
+            status: "publish",
+            approved_by_user_uuid: approverUuid,
+            approved_at: approvedAt,
+            editor_id: approverId || post.editor_id,
+            rejection_reason: null,
+            locked_by: null,
+            locked_name: null,
+            locked_at: null,
+          },
+          { transaction },
+        );
+        await this.addActivity(
+          post,
+          approver || user,
+          "APPROVED",
+          WORKFLOW.APPROVED,
+          null,
+          before,
+        );
+        await post.update(
+          {
+            workflow_status: WORKFLOW.PUBLISHED,
+            published_at: approvedAt,
+          },
+          { transaction },
+        );
+        await this.addActivity(
+          post,
+          null,
+          "PUBLISHED",
+          WORKFLOW.PUBLISHED,
+          null,
+          WORKFLOW.APPROVED,
+        );
+      }
 
       await transaction.commit();
 

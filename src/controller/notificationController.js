@@ -347,10 +347,14 @@ exports.updateNotificationStatus = async (req, res) => {
     const articleUuid = relatedPost?.uuid || null;
 
     if (articleUuid && status === "approved") {
-      // postService.approveArticle already handles:
-      // - updating post status to APPROVED then PUBLISHED
-      // - activity logging
-      // - Telegram notification with correct data
+      if (relatedPost && (relatedPost.workflow_status === "PUBLISHED" || relatedPost.workflow_status === "APPROVED" || relatedPost.status === "publish")) {
+        await Notification.update(
+          { status: "approved" },
+          { where: { uuid: notification.uuid } }
+        );
+        return res.json({ success: true, message: "Artikel sudah berstatus publish/approved.", data: relatedPost });
+      }
+
       const approvedPost = await postService.approveArticle(
         articleUuid,
         req.user,
